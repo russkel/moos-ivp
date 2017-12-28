@@ -1,0 +1,52 @@
+
+pEchoVar
+===============================================
+o Added Boolean Switching. For a configuration "Echo = FOO !-> BAR", if a string 
+  representing a Boolean value is published to FOO, a string representing the 
+  opposite Boolean value is published to BAR. The case of the strings is matched.
+
+
+BHV_AvoidColregsV17
+===============================================
+o Turned off debugging output inadvertantly left enabled.
+
+
+uFldCollisionDetect Documentation
+===============================================
+o substantial additions and corrections
+
+ 
+pMarineViewer
+===============================================
+
+o Added functionality to the Commander pop-up window including
+  auto-adjusting button widths, and the ability to add color to a
+  button to make it easier for an operator to find and hit an
+  emergency button.
+
+o Updated the pMarineViewer documentation to describe commander
+  pop-up window functionality. The commander pop-up window feature
+  was part of the 17.7 release but was not documented at all.
+
+o The m2_berta mission has been updated to include a non-trivial
+  example of the commander pop-up window, to control deploying,
+  returning, station-keeping, vehicle speed, and loiter direction
+  for both vehicles.
+
+pHelmIvP
+===============================================
+o Lazy behavior evaluation (TBD)
+
+
+pBasicContactManager
+===============================================
+o Added the ability to have alerts based on a polygon regions, so
+  missions can be configured to trigger action if a contact of 
+  interest enters a given region. Region criteria can be used 
+  in conjunction with range criteria, or simply on its own.
+o ToDo: ignore contacts from different teams
+        buffer value to avoid thrashing
+
+
+
+
