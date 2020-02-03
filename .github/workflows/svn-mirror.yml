@@ -1,0 +1,41 @@
+name: IvP SVN Mirror
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Install git-svn"
+      run: |
+        sudo apt-get install git-svn
+    - name: Restore svn cache
+      id: cache
+      uses: actions/cache@v1
+      with:
+        path: ivp-svn
+        key: svncache
+    - name: Clone SVN repo
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        git svn clone -r8000:HEAD --ignore-paths='(^MOOS.*|^ivp/src/lib_fltk.*|^ivp/data|^ivp/missions|^ivp/src/ATTIC|\.tgz$|^scripted-releases|^editor-modes|^moosdocs|^manifests)' https://oceanai.mit.edu/svn/moos-ivp-aro/trunk ivp-svn
+
+    # - uses: actions/checkout@master
+    #   with:
+    #     ref: 'master'
+
+    - name: Update from SVN
+      run: |
+        cd ivp-svn
+        git svn fetch
+        git svn rebase
+
+    - name: Push new commits to mirror branch
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: mirror
+        #force: true
+        directory: ivp-svn
