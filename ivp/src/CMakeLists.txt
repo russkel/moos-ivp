@@ -26,6 +26,10 @@ ELSE()
   REMOVE_DEFINITIONS(-D_USE_UNIQUE_PTR)
 ENDIF()
 
+include(GNUInstallDirs)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 #===============================================================================
 # FINDING MOOS' HEADERS AND LIBRARIES...
 #===============================================================================
