@@ -218,6 +218,7 @@ void BHV_AvdColregsV19::onHelmStart()
   alert_request += ", val=" + s_alert_templ;
   alert_request += ", alert_range=" + s_alert_range;
   alert_request += ", cpa_range=" + s_cpa_range;
+  alert_request += ", ignore_group=IGNORE_BHV_" + getDescriptor();
 
   if(m_contact_type_required != "")
     alert_request += ", contact_type=" + m_contact_type_required;
