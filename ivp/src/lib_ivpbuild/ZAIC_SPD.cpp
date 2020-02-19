@@ -323,12 +323,14 @@ void ZAIC_SPD::setPointLocations()
   if(m_ivp_domain.size() != 1)
     return;
   
+  /*
   cout << "========================================*" << endl;
   cout << "medspd: " << m_medspd << endl;
   cout << "lowspd: " << m_lowspd << endl;
   cout << "hghspd: " << m_hghspd << endl;
   cout << "lowspd_util: " << m_lowspd_util << endl;
   cout << "hghspd_util: " << m_hghspd_util << endl;
+  */
 
   int    domain_pts  = m_ivp_domain.getVarPoints(0);
   double delta       = m_ivp_domain.getVarDelta(0);
@@ -381,9 +383,11 @@ void ZAIC_SPD::setPointLocations()
     m_rng.push_back(m_hminutil);
   }
 
+  /*
   for(unsigned int i=0; i<m_dom.size(); i++) {
     cout << "[" << i << "]: dom:" << m_dom[i] << ", val:" << m_rng[i] << endl;
   }
+  */
 }
      
 
