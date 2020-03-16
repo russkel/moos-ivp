@@ -66,6 +66,7 @@ BHV_Trail::BHV_Trail(IvPDomain gdomain) :
   m_post_trail_distance_on_idle = true;
   m_trail_pt_x     = 0;
   m_trail_pt_y     = 0;
+  m_speed          = -1;
 
   m_no_alert_request  = false;
   
@@ -136,14 +137,18 @@ bool BHV_Trail::setParam(string param, string param_val)
       return(false);
     return(true);
   }
-
   else if(param == "trail_range") {
     if(non_neg_number) {
       m_trail_range = dval;
       return(true);
     }  
   }
-
+  else if(param == "speed") {
+    if(non_neg_number) {
+      m_speed = dval;
+      return(true);
+    }
+  }
   return(false);
 }
 
@@ -280,7 +285,11 @@ IvPFunction *BHV_Trail::onRunState()
       double modv = m_cnv * (1 - 0.5*ahead_by/m_nm_radius);
       
       if(modv < 0 || !m_extrapolate)
-	modv = 0;
+        modv = 0;
+
+      // set the maximum trail speed based off the speed parameter
+      if(m_speed > -1 && modv > m_speed)
+        modv = m_speed;
       
       // snap to one decimal precision to reduce excess postings.
       double snapped_modv = snapToStep(modv, 0.1);
@@ -322,7 +331,11 @@ IvPFunction *BHV_Trail::onRunState()
     
     if(modv < 0 || !m_extrapolate)
       modv = 0;
-    
+
+    // set the maximum trail speed based off the speed parameter
+    if(m_speed > -1 && modv > m_speed)
+      modv = m_speed;
+
     postMessage("TRAIL_SPEED", modv);
     
     // summit, pwidth, bwidth, delta, minutil, maxutil

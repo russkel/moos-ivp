@@ -61,6 +61,7 @@ private: // Configuration parameters
   double  m_max_util_cpa_dist;
   double  m_trail_pt_x;
   double  m_trail_pt_y;
+  double  m_speed;
   bool    m_angle_relative;
   bool    m_post_trail_distance_on_idle;
 
