@@ -35,7 +35,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #===============================================================================
 
 # moos - http://www.robots.ox.ac.uk/~mobile/MOOS/wiki/pmwiki.php
-find_package(MOOS 10.0)
+find_package(MOOS 10.0 REQUIRED)
 
 message("+++++++++++++++++++++++++++++++++++++++++")
 message("FIND_PACKAGE CONSIDERED:" ${MOOS_CONSIDERED_CONFIGS})
@@ -58,9 +58,13 @@ message("+++++++++++++++++++++++++++++++++++++++++")
 # FINDING MOOSGeodesy' HEADERS AND LIBRARIES...  
 #===============================================================================
 # moos - http://www.robots.ox.ac.uk/~mobile/MOOS/wiki/pmwiki.php            
-find_package(MOOSGeodesy)
+find_package(MOOSGeodesy REQUIRED)
 include_directories(${MOOSGeodesy_INCLUDE_DIRS})
 #link_directories(${MOOSGeodesy_LIBRARY_PATH})
+
+if(NOT DEFINED MOOSGeodesy_LIBRARIES)
+  set(MOOSGeodesy_LIBRARIES MOOSGeodesy)
+endif()
 
 message("+++++++++++++++++++++++++++++++++++++++++")
 message("MOOSGeodesy_INCLUDE_DIRS:" ${MOOSGeodesy_INCLUDE_DIRS})
