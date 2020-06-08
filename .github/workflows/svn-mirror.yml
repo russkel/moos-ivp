@@ -2,7 +2,7 @@ name: IvP SVN Mirror
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 * * * *'
 
 jobs:
   mirror:
@@ -10,7 +10,7 @@ jobs:
     steps:
     - name: "Install git-svn"
       run: |
-        sudo apt-get install git-svn
+        sudo apt-get update && sudo apt-get install git-svn
     - name: Restore svn cache
       id: cache
       uses: actions/cache@v1
