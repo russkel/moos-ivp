@@ -1,21 +1,21 @@
 #--------------------------------------------------------
-# The CMakeLists.txt for:                 uFldShoreBroker
+# The CMakeLists.txt for:                          pRealm
 # Author(s):                                Mike Benjamin
 #--------------------------------------------------------
- 
+
 SET(SRC
+  Realm.cpp
+  Realm_Info.cpp
   main.cpp
-  ShoreBroker.cpp
-  ShoreBroker_Info.cpp
 )
 
-ADD_EXECUTABLE(uFldShoreBroker ${SRC})
+ADD_EXECUTABLE(pRealm ${SRC})
 
-TARGET_LINK_LIBRARIES(uFldShoreBroker
+TARGET_LINK_LIBRARIES(pRealm
    ${MOOS_LIBRARIES}
-   mbutil
+   realm
    apputil
-   ufield
+   mbutil
    m
    pthread)
 
