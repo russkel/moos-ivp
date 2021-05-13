@@ -10,6 +10,7 @@ jobs:
     steps:
     - name: "Install git-svn"
       run: |
+        sudo add-apt-repository ppa:git-core/ppa
         sudo apt-get update && sudo apt-get install git git-svn
     - name: Restore svn cache
       id: cache
