@@ -10,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install moos-core
+    - name: Install moos and deps
       run: |
         wget https://github.com/russkel/core-moos/releases/download/latest/MOOS-10.5.0-focal-x86_64.deb
+        wget https://github.com/russkel/geodesy-moos/releases/download/latest/MOOSGeodesy-10.5.0-focal-x86_64.deb
         sudo dpkg -i *.deb
     - name: Cache Build
       id: cache-build
