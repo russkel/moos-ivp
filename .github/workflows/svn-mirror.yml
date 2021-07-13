@@ -23,10 +23,6 @@ jobs:
       run: |
         git svn clone -r8000:HEAD --ignore-paths='(^MOOS.*|^ivp/src/lib_fltk.*|^ivp/data|^ivp/missions|^ivp/src/ATTIC|\.tgz$|^scripted-releases|^editor-modes|^moosdocs|^manifests)' https://oceanai.mit.edu/svn/moos-ivp-aro/trunk ivp-svn
 
-    # - uses: actions/checkout@master
-    #   with:
-    #     ref: 'master'
-
     - name: Update from SVN
       run: |
         cd ivp-svn
