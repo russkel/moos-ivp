@@ -1,0 +1,86 @@
+name: Build MOOS-IvP
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: cpp
+
+    - name: Install moos and deps
+      run: |
+        mkdir deps && cd deps
+        wget https://github.com/russkel/core-moos/releases/download/latest/MOOS-10.5.0-focal-x86_64.deb
+        wget https://github.com/russkel/geodesy-moos/releases/download/latest/MOOSGeodesy-10.5.0-focal-x86_64.deb
+        cd ..
+        sudo apt-get install ./deps/*.deb
+        sudo apt-get install libfltk1.3-dev
+
+    - name: Cache Build
+      id: cache-build
+      uses: actions/cache@v1
+      with:
+        path: build
+        key: ${{ runner.os }}-${{ github.sha }}
+
+    - name: cmake
+      if: steps.cache-build.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ../ivp/src
+
+    - name: make
+      if: steps.cache-build.outputs.cache-hit != 'true'
+      run: cd build && make
+
+    - name: Perform CodeQL Analysis
+      if: steps.cache-build.outputs.cache-hit != 'true'
+      uses: github/codeql-action/analyze@v1
+
+    - name: package
+      run: |
+        cd build
+        rm -rf artifacts && mkdir artifacts
+        cpack -G DEB -D CPACK_OUTPUT_FILE_PREFIX=artifacts
+        dpkg -I artifacts/*.deb
+        dpkg --contents artifacts/*.deb
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: deb
+        path: build/artifacts
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download deb from build
+      uses: actions/download-artifact@v1
+      with:
+        name: deb
+
+    - name: Get File Name
+      id: get_filename
+      run: |
+        cd deb
+        echo "::set-output name=short_sha::`echo ${GITHUB_SHA} | cut -c1-8`"
+
+    - name: Create Release
+      id: create_release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: ivp snapshot-${{ steps.get_filename.outputs.short_sha }}
+        draft: true
+        files: deb/*.deb
