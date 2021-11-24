@@ -157,6 +157,7 @@ bool ContactMgrV20::OnStartUp()
 {
   AppCastingMOOSApp::OnStartUp();
 
+  // PID published to support uMemWatch or similar oversight
   Notify("PCONTACTMGRV20_PID", getpid());
 
   m_ownship = m_host_community;
@@ -228,7 +229,14 @@ bool ContactMgrV20::OnStartUp()
       handled = setColorOnString(m_alert_rng_color, value);
     else if(param == "cpa_range_color") 
       handled = setColorOnString(m_alert_rng_cpa_color, value);
-
+    else if(param == "ownship_group") { 
+      setNonWhiteVarOnString(m_os_group, value);
+      handled = m_filter_set.setOwnshipGroup(value);
+    }
+    else if(param == "ownship_type") {
+      setNonWhiteVarOnString(m_os_type, value);
+      handled = m_filter_set.setOwnshipType(value);
+    }
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
@@ -408,7 +416,10 @@ void ContactMgrV20::handleMailDisplayRadii(string value)
 
 //---------------------------------------------------------
 // Procedure: handleMailReportRequest()
-//   Example: BCM_REPORT_REQUEST = var=BCM_CONTACTS_85, range=85
+//   Example: BCM_REPORT_REQUEST = var=BCM_CONTACTS_85, range=85, reason=teaming
+//      Note: The reason field is allowed but not processed.
+//            It is allowed to support apps such as alogmtask that
+//            want to grab report variables related to task teaming
 
 void ContactMgrV20::handleMailReportRequest(string str)
 {
@@ -418,6 +429,8 @@ void ContactMgrV20::handleMailReportRequest(string str)
   double range = -1;
   string group;
   string vtype;
+  string reason;
+  bool   refresh = false;
   vector<string> svector = parseString(str, ',');
   for(unsigned int i=0; i<svector.size(); i++) {
     string param = tolower(biteStringX(svector[i], '='));
@@ -430,6 +443,10 @@ void ContactMgrV20::handleMailReportRequest(string str)
       group = value;
     else if(param == "type")
       vtype = value;
+    else if(param == "refresh")
+      refresh = (tolower(value) == "true");
+    else if(param == "reason")
+      reason = value;
     else
       ok = false;
   }
@@ -449,10 +466,12 @@ void ContactMgrV20::handleMailReportRequest(string str)
       m_map_rep_group[moos_var] = group;
       m_map_rep_vtype[moos_var] = vtype;
       m_map_rep_contacts[moos_var] = "";
+      m_map_rep_refresh[moos_var] = refresh;
     }
     // If this is a repeat request (same moos_var and range) then
     // just update the current time.
     m_map_rep_reqtime[moos_var] = m_curr_time;
+    m_map_rep_refresh[moos_var] = refresh;
   }
 }
 
@@ -466,6 +485,10 @@ void ContactMgrV20::handleMailReportRequest(string str)
 void ContactMgrV20::handleMailAlertRequest(string value, string source)
 {
   m_alert_requests_received++;
+
+  string msg = "New REPORT_REQUEST: " + value + ":" + source;
+  reportEvent(msg);
+
   bool ok = handleConfigAlert(value, source);
   if(!ok)
     reportRunWarning("Unhandled Alert Request: " + value);   
@@ -744,10 +767,11 @@ void ContactMgrV20::postRangeReports()
 	vcontacts.push_back(vname);
       }
     }
-    // Part 3B: If the report is different post it!
-    if(contacts != m_map_rep_contacts[varname]) {
+    // Part 3B: If refresh requested or the report is different, then post it!
+    if(m_map_rep_refresh[varname] || (contacts != m_map_rep_contacts[varname])) {
       Notify(varname, contacts);
       m_map_rep_contacts[varname] = contacts;
+      m_map_rep_refresh[varname]  = false;
     }
   }
 }
@@ -1093,7 +1117,8 @@ void ContactMgrV20::postAlert(NodeRecord record, VarDataPair pair)
   string time_str = record.getStringValue("time");
   string name_str = record.getName();
   string type_str = record.getType();
-
+  string group_str = record.getGroup();
+  
   // Step 2: Get var to post, and expand macros if any
   string var = pair.get_var();
 
@@ -1131,9 +1156,11 @@ void ContactMgrV20::postAlert(NodeRecord record, VarDataPair pair)
   msg = findReplace(msg, "$[DEP]", dep_str);
   msg = findReplace(msg, "$[VNAME]", name_str);
   msg = findReplace(msg, "$[VTYPE]", type_str);
+  msg = findReplace(msg, "$[GROUP]", group_str);
   msg = findReplace(msg, "$[UTIME]", time_str);
   msg = findReplace(msg, "%[VNAME]", tolower(name_str));
   msg = findReplace(msg, "%[VTYPE]", tolower(type_str));
+  msg = findReplace(msg, "%[GROUP]", tolower(group_str));
 
   Notify(var, msg);
   reportEvent(var + "=" + msg);
@@ -1230,6 +1257,7 @@ void ContactMgrV20::postRadii(bool active)
   circle.set_edge_size(1);
   circle.set_active(active);
   circle.set_duration(3);
+  circle.set_time(m_curr_time);
   string s1 = circle.get_spec();
   Notify("VIEW_CIRCLE", s1);
 
@@ -1247,6 +1275,7 @@ void ContactMgrV20::postRadii(bool active)
     circ.set_edge_size(1);
     circ.set_active(active);
     circ.set_duration(3);
+    circ.set_time(m_curr_time);
     string s2 = circ.get_spec();
     
     Notify("VIEW_CIRCLE", s2);
@@ -1446,8 +1475,18 @@ bool ContactMgrV20::buildReport()
   string bcm_req_received = uintToString(m_alert_requests_received);
   string max_age = doubleToStringX(m_contact_max_age,2);
   string reject_range = "off";
+
+  string os_group = m_os_group;
+  if(os_group == "")
+    os_group = "not specified";
+  string os_type = m_os_type;
+  if(os_type == "")
+    os_type = "not specified";
+
   if(m_reject_range > 0)
     reject_range = doubleToStringX(m_reject_range,2);
+  m_msgs << "Ownship Group:      " << os_group << endl;
+  m_msgs << "Ownship Type:       " << os_type << endl;
   m_msgs << "X/Y from Lat/Lon:   " << boolToString(m_use_geodesy)   << endl;
   m_msgs << "Contact Max Age:    " << max_age << endl;
   m_msgs << "Reject Range:       " << reject_range << endl;

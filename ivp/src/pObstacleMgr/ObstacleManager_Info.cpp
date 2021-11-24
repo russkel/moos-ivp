@@ -1,5 +1,5 @@
 /*****************************************************************/
-/*    NAME: Michael Benjamin, Henrik Schmidt, and John Leonard   */
+/*    NAME: Michael Benjamin                                     */
 /*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
 /*    FILE: ObstacleManager_Info.cpp                             */
 /*    DATE: Aug 27th 2014                                        */
@@ -78,6 +78,7 @@ void showExampleConfigAndExit()
   blk("                                                                ");
   blk("  post_dist_to_polys = true  // true, false or (close)          ");
   blk("  post_view_polys = true     // (true) or false or              ");
+  blk("  obstacles_color = green    // default is blue                 ");
   blk("                                                                ");
   blk("  max_pts_per_cluster = 20   // default is 20                   ");
   blk("  max_age_per_point   = 20   // (secs)  default is 20           ");
@@ -90,6 +91,15 @@ void showExampleConfigAndExit()
   blk("  lasso_radius = 5           // (meters) default is 5           ");
   blk("                                                                ");
   blk("  obstacles_color = color    // default is blue                 ");
+  blk("                                                                ");
+  blk("  given_max_duration = 30    // default is 60 seconds           ");
+  blk("                                                                ");
+  blk("  general_alert = update_var=GEN_ALERT, alert_range=800         ");
+  blk("                                                                ");
+  blk("  // To squeeze more viewer effic when large # of obstacles:    ");
+  blk("  poly_label_thresh = 25     // Set label color=off if amt>25   ");
+  blk("  poly_shade_thresh = 100    // Set shade color=off if amt>100  ");
+  blk("  poly_vertex_thresh = 150   // Set vertex size=0 if amt>150    ");
   blk("}                                                               ");
   blk("                                                                ");
   exit(0);
@@ -115,19 +125,20 @@ void showInterfaceAndExit()
   blk("                                                                ");
   blk("  NAV_X = 103.0                                                 ");
   blk("  NAV_Y = -23.8                                                 ");
-  blk("  OBM_ALERT_REQUEST = alert_range=25,                           ");
+  blk("  OBM_ALERT_REQUEST = name=avd_obstacle, alert_range=25,        ");
   blk("                      update_var=OBSTACLE_ALERT                 ");
   blk("                                                                ");
   blk("PUBLICATIONS:                                                   ");
   blk("------------------------------------                            ");
-  blk("  VEHICLE_CONNECT   = true                                      ");
   blk("  VIEW_POLYGON      = pts={32,-100:38,-98:40,-100:32,-104},     ");
   blk("                      label=d,edge_color=white,vertex_color=blue");
+  blk("  OBM_CONNECT       = true                                      ");
   blk("  OBM_DIST_TO_OBJ   = ob_key,17.5                               ");
   blk("  OBM_MIN_DIST_EVER = ob_key,17.5                               ");
   blk("  OBSTACLE_ALERT    = name=d#                                   ");
   blk("                      poly=pts={32,-100:38,-98:40,-100:32,-104},");
   blk("                      label=d                                   ");
+  blk("  OBM_RESOLVED      = ob_23                                     ");
   exit(0);
 }
 

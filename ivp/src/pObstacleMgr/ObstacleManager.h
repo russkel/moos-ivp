@@ -11,6 +11,8 @@
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 #include "XYPolygon.h"
 #include "Obstacle.h"
+#include "VarDataPair.h"
+#include "MailFlagSet.h"
 #include <set>
 
 class ObstacleManager : public AppCastingMOOSApp
@@ -32,14 +34,18 @@ protected:
   void registerVariables();
 
   bool handleConfigPostDistToPolys(std::string);
+  bool handleConfigGivenMaxDuration(std::string);
+  bool handleConfigFlag(std::string, std::string);
+  bool handleConfigGeneralAlert(std::string);
 
   bool handleMailNewPoint(std::string);
   bool handleMailAlertRequest(std::string);
 
-  bool handleGivenObstacle(std::string);
+  bool handleGivenObstacle(std::string, std::string src="mail");
   
   void postConvexHullUpdates();
-  void postConvexHullUpdate(std::string obstacle_key);
+  void postConvexHullUpdate(std::string obstacle_key, std::string alert_var,
+			    std::string alert_name);
   
   XYPolygon genPseudoHull(const std::vector<XYPoint>& pts, double radius);
   
@@ -50,7 +56,10 @@ protected:
   bool updatePointHulls();
   void updatePolyRanges();
   void manageMemory();
+
+  void postFlags(const std::vector<VarDataPair>& flags);
   
+  void onNewObstacle(std::string obs_type);
   
 private: // Configuration variables
   std::string  m_point_var;            // incoming points
@@ -59,6 +68,19 @@ private: // Configuration variables
   std::string  m_alert_name;
   double       m_alert_range;
 
+  // General alert var
+  std::string  m_gen_alert_var;
+  std::string  m_gen_alert_name;
+  double       m_gen_alert_range;
+
+  // When view_polys get numerous, skimp on extras
+  unsigned int m_poly_label_thresh;
+  unsigned int m_poly_shade_thresh;
+  unsigned int m_poly_vertex_thresh;
+  bool m_poly_label_thresh_over;
+  bool m_poly_shade_thresh_over;
+  bool m_poly_vertex_thresh_over;
+  
   // Managing incoming points
   double       m_ignore_range;
   unsigned int m_max_pts_per_cluster;
@@ -73,6 +95,13 @@ private: // Configuration variables
   bool         m_post_view_polys;
   
   std::string  m_obstacles_color;
+
+  double       m_given_max_duration;
+
+  std::vector<VarDataPair> m_new_obs_flags;
+
+  MailFlagSet m_mfset;
+  
   
 private: // State variables
   double m_nav_x;
@@ -88,6 +117,12 @@ private: // State variables
   unsigned int  m_alerts_posted;
   unsigned int  m_alerts_resolved;
 
+  unsigned int m_given_mail_ever;
+  unsigned int m_given_mail_good;
+  unsigned int m_given_config_ever;
+
+  unsigned int m_obstacles_ever;
+  
   std::map<std::string, Obstacle> m_map_obstacles;
 };
 

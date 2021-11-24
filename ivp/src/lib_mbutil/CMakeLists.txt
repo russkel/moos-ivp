@@ -15,10 +15,14 @@ SET(SRC
   StringTree.cpp
   StringNode.cpp
   VarDataPair.cpp
+  VarDataPairUtils.cpp
+  NodeMessage.cpp
+  NodeMessageUtils.cpp
   Odometer.cpp
   Figlog.cpp
   TStamp.cpp
   ReleaseInfo.cpp
+  MailFlagSet.cpp
   LatLonFormatUtils.cpp
   )
 
@@ -34,10 +38,14 @@ SET(HEADERS
   StringTree.h
   TermUtils.h
   VarDataPair.h
+  VarDataPairUtils.h
+  NodeMessage.h
+  NodeMessageUtils.h
   Odometer.h
   TStamp.h
   ReleaseInfo.h
   ScopeEntry.h
+  MailFlagSet.h
   LatLonFormatUtils.h
 )
 

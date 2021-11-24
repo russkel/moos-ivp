@@ -157,6 +157,8 @@ bool LogViewLauncher::handleConfigParam(string argi)
     handled = handleZoom(argi.substr(7));
   else if(strBegins(argi, "--nowtime=")) 
     handled = handleNowTime(argi.substr(10));
+  else if(strBegins(argi, "--grep=")) 
+    handled = handleGrep(argi.substr(7));
   else if(strBegins(argi, "--bv=")) 
     handled = handleBehaviorVarMapping(argi.substr(5));
   else if((argi == "--quick") || (argi == "-q")) 
@@ -257,7 +259,8 @@ bool LogViewLauncher::configDataBroker()
 
   m_dbroker.cacheMasterIndices();
   m_dbroker.cacheBehaviorIndices();
-  
+  m_dbroker.cacheAppLogIndices();
+
   return(true);
 }
 
@@ -313,6 +316,8 @@ bool LogViewLauncher::configGraphical()
     m_gui->np_viewer->setAltNavPrefix(m_alt_nav_prefix);
 
   m_gui->setDataBroker(m_dbroker);
+  m_gui->setGrepStr1(m_grep1);
+  m_gui->setGrepStr2(m_grep2);
   
   // Try to initialize the two LogPlots to be something reasonable
   if(!m_quick_start) {
@@ -385,7 +390,9 @@ bool LogViewLauncher::handleBackground(string val)
     return(true);
   }
 
-  if((val == "mit") || (val=="charles"))
+  if(val == "mit") 
+    m_tiff_file = "MIT_SP.tif";
+  else if(val=="charles")
     m_tiff_file = "AerialMIT.tif";
   else if((val == "fl") || (val == "forrest"))
     m_tiff_file = "forrest19.tif";
@@ -507,6 +514,25 @@ bool LogViewLauncher::handleNowTime(string val)
   if(!isNumber(val))
     return(false);
   m_start_time = atof(val.c_str());
+  return(true);
+}
+
+
+//-------------------------------------------------------------
+// Procedure: handleGrep()    --grep=foobar
+
+bool LogViewLauncher::handleGrep(string val)
+{
+  if(val == "")
+    return(false);
+
+  if(m_grep1 == "")
+    m_grep1 = val;
+  else if(m_grep2 == "")
+    m_grep2 = val;
+  else
+    return(false);
+
   return(true);
 }
  

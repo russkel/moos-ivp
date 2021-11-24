@@ -9,6 +9,8 @@ SET(SRC
   ALogSorter.cpp
   LogUtils.cpp
   ALogEntry.cpp
+  AppLogPlot.cpp
+  AppLogEntry.cpp
   SplitHandler.cpp  
   ALogDataBroker.cpp
   LogPlot.cpp
@@ -22,12 +24,16 @@ SET(SRC
   Populator_HelmPlots.cpp
   Populator_IPF_Plot.cpp
   Populator_EncounterPlot.cpp
+  Populator_AppLogPlot.cpp
   ModelHelmScope.cpp
   ModelVarScope.cpp
+  ModelAppLogScope.cpp
 )
 
 SET(HEADERS
    ALogEntry.h
+   AppLogPlot.h
+   AppLogEntry.h
    ALogScanner.h
    ALogSorter.h
    LogUtils.h

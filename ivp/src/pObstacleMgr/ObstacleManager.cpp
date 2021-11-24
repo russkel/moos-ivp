@@ -1,5 +1,5 @@
 /*****************************************************************/
-/*    NAME: Michael Benjamin, Henrik Schmidt, and John Leonard   */
+/*    NAME: Michael Benjamin                                     */
 /*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
 /*    FILE: ObstacleManager.cpp                                  */
 /*    DATE: Aug 27th 2014 For RobotX                             */
@@ -11,6 +11,7 @@
 #include "MBUtils.h"
 #include "AngleUtils.h"
 #include "GeomUtils.h"
+#include "MacroUtils.h"
 #include "ACTable.h"
 #include "ObstacleManager.h"
 #include "ConvexHullGenerator.h"
@@ -27,10 +28,18 @@ ObstacleManager::ObstacleManager()
   // Init Config Variables
   m_alert_range  = 20;  // meters
   m_ignore_range = -1;  // meters (neg value means off)
-
+  m_gen_alert_range = -1;
+  
   m_max_pts_per_cluster = 20;
   m_max_age_per_point   = 20;
 
+  m_poly_label_thresh = 25;
+  m_poly_shade_thresh = 100;
+  m_poly_vertex_thresh = 150;
+  m_poly_label_thresh_over = false;
+  m_poly_shade_thresh_over = false;
+  m_poly_vertex_thresh_over = false;
+  
   m_lasso = false;
   m_lasso_points = 6;
   m_lasso_radius = 5;  // meters
@@ -40,6 +49,8 @@ ObstacleManager::ObstacleManager()
   m_post_view_polys = true;
 
   m_obstacles_color = "blue";
+
+  m_given_max_duration = 60; // seconds
   
   // Init State Variables
   m_nav_x = 0;
@@ -50,7 +61,12 @@ ObstacleManager::ObstacleManager()
   m_points_ignored = 0;
   m_points_invalid = 0;
   m_obstacles_released = 0;
+  m_obstacles_ever = 0;
 
+  m_given_mail_ever = 0;
+  m_given_mail_good = 0;
+  m_given_config_ever = 0;
+  
   m_min_dist_ever = -1;
   
   m_alerts_posted = 0;
@@ -81,7 +97,9 @@ bool ObstacleManager::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
 
-    bool handled = false;
+    // Consider mail handled by default if handled by mail_flag_set
+    bool handled = m_mfset.handleMail(key, m_curr_time);
+    
     if(key == m_point_var)
       handled = handleMailNewPoint(sval);
     if(key == "NAV_X") {
@@ -99,13 +117,16 @@ bool ObstacleManager::OnNewMail(MOOSMSG_LIST &NewMail)
     else if(key == "APPCAST_REQ") // handle by AppCastingMOOSApp
       handled = true;
 
-
     if(!handled)
       reportRunWarning("Unhandled Mail: " + key);
-
+    
   }
-	
-   return(true);
+
+  // After MailFlagSet has handled all mail from this iteration,
+  // post any flags that result. Flags will be cleared in m_mfset.
+  postFlags(m_mfset.getNewFlags());
+  
+  return(true);
 }
 
 //---------------------------------------------------------
@@ -157,7 +178,7 @@ bool ObstacleManager::OnStartUp()
     if(param == "point_var")
       handled = setNonWhiteVarOnString(m_point_var, value);
     else if(param == "given_obstable")
-      handled = handleGivenObstacle(value);
+      handled = handleGivenObstacle(value, "mission");
     else if(param == "alert_range")
       handled = setPosDoubleOnString(m_alert_range, value);
     else if(param == "ignore_range")
@@ -172,6 +193,23 @@ bool ObstacleManager::OnStartUp()
       handled = setBooleanOnString(m_post_view_polys, value);
     else if(param == "obstacles_color")
       handled = setColorOnString(m_obstacles_color, value);
+    else if(param == "poly_label_thresh")
+      handled = setUIntOnString(m_poly_label_thresh, value);
+    else if(param == "poly_shade_thresh")
+      handled = setUIntOnString(m_poly_shade_thresh, value);
+    else if(param == "poly_vertex_thresh")
+      handled = setUIntOnString(m_poly_vertex_thresh, value);
+    else if(param == "given_max_duration")
+      handled = handleConfigGivenMaxDuration(value);
+    else if(param == "general_alert")
+      handled = handleConfigGeneralAlert(value);
+
+    else if(param == "new_obs_flag") 
+      handled = handleConfigFlag("new_obs", value);
+
+    else if(param == "mailflag") 
+      handled = m_mfset.addFlag(value);
+
     else if(param == "lasso")
       handled = setBooleanOnString(m_lasso, value);
 
@@ -199,8 +237,8 @@ bool ObstacleManager::OnStartUp()
   if(m_point_var == "")
     m_point_var = "TRACKED_FEATURE";
 
-  Notify("VEHICLE_CONNECT", "true");
-  reportEvent("VEHICLE_CONNECT=true");
+  Notify("OBM_CONNECT", "true");
+  reportEvent("OBM_CONNECT=true");
   
   registerVariables();	
   return(true);
@@ -220,6 +258,12 @@ void ObstacleManager::registerVariables()
 
   Register("GIVEN_OBSTACLE",0);
   Register("OBM_ALERT_REQUEST",0);
+
+  // Register for any variables involved in the MailFlagSet
+  vector<string> mflag_vars = m_mfset.getMailFlagKeys();
+  for(unsigned int i=0; i<mflag_vars.size(); i++)
+    Register(mflag_vars[i], 0);
+
 }
 
 
@@ -265,25 +309,49 @@ XYPoint ObstacleManager::customStringToPoint(string point_str)
 
 
 //------------------------------------------------------------
-// Procedure: handleGivenObstacle
+// Procedure: handleGivenObstacle()
 //   Example: pts={90.2,-80.4:...:82,-88:82.1,-83.7:85.4,-80.4},
 //            label=ob_0,duration=60
 //      Note: The duration parameter is optional
 
-
-bool ObstacleManager::handleGivenObstacle(string poly)
+bool ObstacleManager::handleGivenObstacle(string poly, string source)
 {
+  // Regardless of result or return value, increment the right counter
+  if(source == "mail")
+    m_given_mail_ever++;
+  else if(source == "mission")
+    m_given_config_ever++;
+
+
   XYPolygon new_poly = string2Poly(poly);
   if(!new_poly.is_convex())
     return(false);
 
-  double duration = 0;
+  // By default set the duration to be off (-1)
+  double duration = -1;
   string dur_str = tokStringParse(poly, "duration", ',', '=');
   if(isNumber(dur_str))
     duration = atof(dur_str.c_str());
   
   string key = new_poly.get_label();
 
+  if(source == "mail") {
+    if(m_given_max_duration > 0) {
+      if(dur_str == "") {
+	string msg = "Incoming GIVEN_OBSTACLE has missing duration"; 
+	reportRunWarning(msg);
+	reportRunWarning(poly);
+	return(false);
+      }
+      if(duration > m_given_max_duration) {
+	string msg = "Incoming GIVEN_OBSTACLE has duration exceeding max duration";
+	reportRunWarning(msg);
+	return(false);
+      }
+    }
+    m_given_mail_good++;
+  }
+  
   // Sanity check: If an obstacle with given label/key is already
   // known, and associated with an obstacle that is NOT a given
   // obstacle (rather it is associated with a data stream of points),
@@ -297,6 +365,9 @@ bool ObstacleManager::handleGivenObstacle(string poly)
   m_map_obstacles[key].setPoly(new_poly);
   m_map_obstacles[key].setDuration(duration);
   m_map_obstacles[key].setTStamp(m_curr_time);
+  onNewObstacle("given");  
+  
+  reportEvent("new obstacle: " + m_map_obstacles[key].getInfo(m_curr_time)); 
   
   return(true);
 }
@@ -340,6 +411,7 @@ bool ObstacleManager::handleMailNewPoint(string value)
   m_map_obstacles[key].addPoint(newpt);
   m_map_obstacles[key].setChanged(true);
   m_map_obstacles[key].setMaxPts(m_max_pts_per_cluster);
+  onNewObstacle("points");  
 
   return(true);
 }
@@ -352,12 +424,31 @@ bool ObstacleManager::handleMailNewPoint(string value)
 
 bool ObstacleManager::updatePointHulls()
 {
+  unsigned int pcount = m_map_obstacles.size();
+  
+  bool poly_label_thresh_over  = (pcount > m_poly_label_thresh);
+  bool poly_shade_thresh_over  = (pcount > m_poly_shade_thresh);
+  bool poly_vertex_thresh_over = (pcount > m_poly_vertex_thresh);
+
+  bool thresh_crossed = false;
+  if(poly_label_thresh_over != m_poly_label_thresh_over)
+    thresh_crossed = true; 
+  if(poly_shade_thresh_over != m_poly_shade_thresh_over)
+    thresh_crossed = true; 
+  if(poly_vertex_thresh_over != m_poly_vertex_thresh_over)
+    thresh_crossed = true; 
+  m_poly_label_thresh_over  = poly_label_thresh_over;
+  m_poly_shade_thresh_over  = poly_shade_thresh_over;
+  m_poly_vertex_thresh_over = poly_vertex_thresh_over;
+  
   map<string,Obstacle>::iterator p;
   for(p=m_map_obstacles.begin(); p!=m_map_obstacles.end(); p++) {
-    if(!p->second.hasChanged())
+    if(!p->second.hasChanged() && !thresh_crossed)
       continue;
     string key = p->first;
     vector<XYPoint> points = p->second.getPoints();
+    if(points.size() == 0)
+      continue;
     
     XYPolygon poly;
     if(m_lasso) {
@@ -375,7 +466,7 @@ bool ObstacleManager::updatePointHulls()
     // First check if the polygon is convex. Certain edge cases may result
     // in a non convex polygon even with N>2 points, e.g., 3 colinear pts.
     if(!poly.is_convex()) {
-      reportRunWarning("hull failure - Placeholder needed ");
+      reportRunWarning("hull failure - Placeholder needed " + uintToString(poly.size()));
       poly = placeholderConvexHull(key);
     }
     
@@ -383,16 +474,31 @@ bool ObstacleManager::updatePointHulls()
     p->second.setPoly(poly);
     
     if(m_post_view_polys) {
-      poly.set_vertex_color(m_obstacles_color);
+      if(poly_label_thresh_over)
+	poly.set_label_color("invisible");
+
+      if(poly_shade_thresh_over)
+	poly.set_color("fill", "invisible");
+      else {
+	poly.set_color("fill", m_obstacles_color);
+	poly.set_transparency(0.15);
+      }
+
+      if(poly_vertex_thresh_over) {
+	poly.set_vertex_color("invisible");
+	poly.set_vertex_size(0);
+      }
+      else {
+	poly.set_vertex_color(m_obstacles_color);
+	poly.set_vertex_size(3);
+      }
+      
       poly.set_edge_color(m_obstacles_color);
-      poly.set_color("fill", m_obstacles_color);
-      poly.set_transparency(0.15);
-      poly.set_vertex_size(4);
       poly.set_edge_size(1);
-      string poly_str = poly.get_spec(3);
+      string poly_str = poly.get_spec(5);
       Notify("VIEW_POLYGON", poly_str);
     }
-    p->second.setChanged(false);
+    //p->second.setChanged(false);
   }
   
   return(true);
@@ -447,6 +553,52 @@ bool ObstacleManager::handleMailAlertRequest(string request)
 }
 
 //------------------------------------------------------------
+// Procedure: handleConfigGeneralAlert
+//   Example: general_alert = "name=gen_alert,
+//                             update_var=GEN_OBSTACLE_ALERT,
+//                             alert_range=2000,
+
+bool ObstacleManager::handleConfigGeneralAlert(string request)
+{
+  string name = "gen_alert";
+  string update_var, alert_range;
+
+  vector<string> svector = parseString(request, ',');
+  for(unsigned int i=0; i<svector.size(); i++) {
+    string param = tolower(biteStringX(svector[i], '='));
+    string value = svector[i];
+    if(param == "name")
+      name = value;
+    else if(param == "update_var")
+      update_var = value;
+    else if(param == "alert_range")
+      alert_range = value;
+    else
+      return(false);
+  }
+
+  if((name == "") || (update_var == "") || (alert_range == ""))
+    return(false);
+
+  if(!isNumber(alert_range))
+    return(false);
+
+  if(!strEnds(name, "_"))
+     name += "_";
+  
+  double d_alert_range = atof(alert_range.c_str());
+  if(d_alert_range <= 0)
+    return(false);
+
+  // Alert request is valid, go ahead and set 
+  m_gen_alert_var   = update_var;
+  m_gen_alert_name  = name;
+  m_gen_alert_range = d_alert_range;
+
+  return(true);
+}
+
+//------------------------------------------------------------
 // Procedure: postConvexHullUpdates
 
 void ObstacleManager::postConvexHullUpdates()
@@ -477,12 +629,23 @@ void ObstacleManager::postConvexHullUpdates()
       if(post_this_dist_to_poly) {
 	string msg = toupper(key) + "," + doubleToString(dist,1);
 	Notify("OBM_DIST_TO_OBJ", msg);
-	reportEvent("OBM_DIST_TO_OBJ="+msg);
+	//reportEvent("OBM_DIST_TO_OBJ="+msg);
       }
 
-      // Only post hull if ownship is w/in alert range
-      if(close_range)
-        postConvexHullUpdate(key);
+      // Only post obstacle hull if it has changed.
+      if(m_map_obstacles[key].hasChanged()) {
+
+	// At this point we're committed to posting an update so go ahead 
+	// and mark this obstacle key as NOT changed.
+	m_map_obstacles[key].setChanged(false);
+	m_map_obstacles[key].incUpdatesTotal();
+
+	// Only post hull if ownship is w/in alert range
+	if(close_range)
+	  postConvexHullUpdate(key, m_alert_var, m_alert_name);
+	if((m_alert_var != "") && (dist <= m_gen_alert_range))
+	  postConvexHullUpdate(key, m_gen_alert_var, m_gen_alert_name);
+      }      
     }
   }
 }
@@ -491,25 +654,17 @@ void ObstacleManager::postConvexHullUpdates()
 //------------------------------------------------------------
 // Procedure: postConvexHullUpdate
 
-void ObstacleManager::postConvexHullUpdate(string key)
+void ObstacleManager::postConvexHullUpdate(string key, string alert_var,
+					   string alert_name)
 {
-  // Part 1: If the polygon hasn't changed, don't post an update
-  if(!m_map_obstacles[key].hasChanged())
-    return;
-
-  // At this point we're committed to posting an update so go ahead 
-  // and mark this obstacle key as NOT changed.
-  m_map_obstacles[key].setChanged(false);
-  m_map_obstacles[key].incUpdatesTotal();
-
   XYPolygon poly = m_map_obstacles[key].getPoly();
 
-  string update_str = "name=" + key + "#";
+  string update_str = "name=" + alert_name + key + "#";
   update_str += "poly=" + poly.get_spec_pts(5) + ",label=" + key;
 
   m_alerts_posted++;
-  Notify(m_alert_var, update_str);
-  reportEvent(m_alert_var + "=" + update_str);
+  Notify(alert_var, update_str);
+  reportEvent(alert_var + "=" + update_str);
 }
 
 //------------------------------------------------------------
@@ -607,10 +762,6 @@ void ObstacleManager::updatePolyRanges()
     // Also keep track of closest range ever to any obstacle
     if((m_min_dist_ever < 0) || (range < m_min_dist_ever)) {
       m_min_dist_ever = range;
-
-      if(m_min_dist_ever < -1)
-	Notify("OBM_kEY", key + ":" + uintToString(poly.size()) + ":" + poly.get_spec());
-
       Notify("OBM_MIN_DIST_EVER", m_min_dist_ever);
     }
      
@@ -656,10 +807,10 @@ void ObstacleManager::manageMemory()
     }
 
     // Post to alert variabe that this obstacle is resolved
-    string done_str = "name=" + key + "#resolved=true";
+    Notify("OBM_RESOLVED", key);
     m_alerts_resolved++;
-    Notify(m_alert_var, done_str);
-    reportEvent(m_alert_var + "=" + done_str);
+    reportEvent("OBM_RESOLVED=" + key);
+
     
     // Update key obstacle manager state
     m_map_obstacles.erase(key);
@@ -682,6 +833,83 @@ bool ObstacleManager::handleConfigPostDistToPolys(string val)
 }
 
 //------------------------------------------------------------
+// Procedure: handleConfigGivenMaxDuration()
+
+bool ObstacleManager::handleConfigGivenMaxDuration(string val) 
+{
+  if(tolower(val) == "off") {
+    m_given_max_duration = -1;
+    return(true);
+  }
+
+  return(setPosDoubleOnString(m_given_max_duration, val));
+}
+
+//------------------------------------------------------------
+// Procedure: handleConfigFlag()
+
+bool ObstacleManager::handleConfigFlag(string flag_type, string str)
+{
+  string moosvar = biteStringX(str, '=');
+  string moosval = str;
+
+  if((moosvar == "") || (moosval == ""))
+    return(false);
+  
+  VarDataPair pair(moosvar, moosval, "auto");
+  if(flag_type == "new_obs")
+    m_new_obs_flags.push_back(pair);
+  else
+    return(false);
+  
+  return(true);
+}
+
+
+//------------------------------------------------------------
+// Procedure: onNewObstacle()
+
+void ObstacleManager::onNewObstacle(string obs_type)
+{
+  if((obs_type != "points") && (obs_type != "given"))
+    return;
+  
+  m_obstacles_ever++;
+
+
+  postFlags(m_new_obs_flags);  
+}
+
+//------------------------------------------------------------
+// Procedure: postFlags()
+
+void ObstacleManager::postFlags(const vector<VarDataPair>& flags)
+{
+  for(unsigned int i=0; i<flags.size(); i++) {
+    VarDataPair pair = flags[i];
+    string moosvar = pair.get_var();
+
+    // If posting is a double, just post. No macro expansion
+    if(!pair.is_string()) {
+      double dval = pair.get_ddata();
+      Notify(moosvar, dval);
+    }
+    // Otherwise if string posting, handle macro expansion
+    else {
+      string sval = pair.get_sdata();
+
+      unsigned int obs_now = m_map_obstacles.size();
+      
+      sval = macroExpand(sval, "OBS_NOW", obs_now);
+      sval = macroExpand(sval, "OBS_EVER", m_obstacles_ever);
+      
+      Notify(moosvar, sval);
+    }
+  }
+}
+
+
+//------------------------------------------------------------
 // Procedure: buildReport()
 
 bool ObstacleManager::buildReport() 
@@ -691,6 +919,7 @@ bool ObstacleManager::buildReport()
   string str_lasso_rad = doubleToStringX(m_lasso_radius);
 
   string str_alert_rng  = doubleToStringX(m_alert_range,1);
+  string str_gen_alert_rng  = doubleToStringX(m_gen_alert_range,1);
   string str_ignore_rng = doubleToStringX(m_ignore_range,1);
 
   string str_max_pts_per = uintToString(m_max_pts_per_cluster);
@@ -709,13 +938,20 @@ bool ObstacleManager::buildReport()
   m_msgs << "  max_pts_per_cluster: " << str_max_pts_per   << endl;
   m_msgs << "  max_age_per_point:   " << str_max_age_per   << endl;
   m_msgs << "  ignore_range:        " << str_ignore_rng    << endl;
+  m_msgs << "Configuration (given_obstacles):            " << endl;
+  m_msgs << "  given_max_duration: " << m_given_max_duration << endl;
   m_msgs << "Configuration (viewing):                    " << endl;
   m_msgs << "  post_dist_to_polys: " << m_post_dist_to_polys << endl;
   m_msgs << "  post_view_polys:    " << str_post_view_polys  << endl;
+  m_msgs << "  obstacle color:     " << m_obstacles_color  << endl;
   m_msgs << "Configuration (alerts):                     " << endl;
   m_msgs << "  alert_var:   " << m_alert_var               << endl;
   m_msgs << "  alert_name:  " << m_alert_name              << endl;
   m_msgs << "  alert_range: " << str_alert_rng             << endl;
+  m_msgs << "Configuration (general alert):              " << endl;
+  m_msgs << "  gen_alert_var:   " << m_gen_alert_var       << endl;
+  m_msgs << "  gen_alert_name:  " << m_gen_alert_name      << endl;
+  m_msgs << "  gen_alert_range: " << str_gen_alert_rng     << endl;
   m_msgs << "Configuration (lasso option):               " << endl;
   m_msgs << "  lasso:        " << str_lasso                << endl;
   m_msgs << "  lasso_points: " << str_lasso_pts            << endl;
@@ -727,6 +963,10 @@ bool ObstacleManager::buildReport()
   m_msgs << "  Points Received:   " << m_points_total      << endl;
   m_msgs << "  Points Invalid:    " << m_points_invalid    << endl;
   m_msgs << "  Points Ignored:    " << m_points_ignored    << endl;
+  m_msgs << "State: (given_obstacles):                   " << endl;
+  m_msgs << "  Given Obstacles (mail) ever: " << m_given_mail_ever << endl;
+  m_msgs << "  Given Obstacles (mail) good: " << m_given_mail_good << endl;
+  m_msgs << "  Given Obstacles (config):    " << m_given_config_ever << endl;
   m_msgs << "State: (obstacles):                         " << endl;
   m_msgs << "  Obstacles:          " << m_map_obstacles.size() << endl;
   m_msgs << "  Obstacles released: " << m_obstacles_released << endl;

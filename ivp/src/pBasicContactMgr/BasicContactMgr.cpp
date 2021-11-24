@@ -168,6 +168,7 @@ bool BasicContactMgr::OnStartUp()
 {
   AppCastingMOOSApp::OnStartUp();
 
+  // PID published to support uMemWatch or similar oversight
   Notify("PBASICCONTACTMGR_PID", getpid());
 
   m_ownship = m_host_community;
@@ -703,9 +704,9 @@ bool BasicContactMgr::handleConfigAlert(string alert_str)
       pattern = right;
       ok = true;
     }
-    else if((left == "on_flag")) 
+    else if((left == "on_flag") || (left == "onflag")) 
       ok = m_map_alerts[alert_id].addAlertOnFlag(right);
-    else if((left == "off_flag"))
+    else if((left == "off_flag") || (left == "offflag"))
       ok = m_map_alerts[alert_id].addAlertOffFlag(right);
     else if(left == "region")
       ok = m_map_alerts[alert_id].setAlertRegion(right);
@@ -1677,6 +1678,7 @@ bool BasicContactMgr::buildReport()
 	val = doubleToStringX(pair.get_ddata(), 3);
       m_msgs << "  ON_FLAG = " << var << "=" << val << endl;
     }
+
     vector<VarDataPair> xpairs = getAlertOffFlags(alert_id);
     for(unsigned int i=0; i<xpairs.size(); i++) {
       VarDataPair pair = xpairs[i];

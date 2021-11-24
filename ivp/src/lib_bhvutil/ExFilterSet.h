@@ -48,6 +48,9 @@ class ExFilterSet
   bool addIgnoreRegion(std::string);
   bool addMatchRegion(std::string);
 
+  bool setOwnshipGroup(std::string);
+  bool setOwnshipType(std::string);
+  
   bool setStrictIgnore(std::string);
   
   bool addIgnoreRegion(XYPolygon);
@@ -57,7 +60,11 @@ class ExFilterSet
  public: // Analysis
   bool filterCheck(NodeRecord) const;
   bool filterCheck(NodeRecord, double osx, double osy) const;
-
+  bool filterCheckGroup(std::string group) const;
+  bool filterCheckVType(std::string vtype) const;
+  bool filterCheckVName(std::string vtype) const;
+  bool filterCheckRegion(double cnx, double cny) const;
+  
  public: // Serialization
   std::string configFilter(std::string);
   std::string getSummary() const;
@@ -67,6 +74,9 @@ class ExFilterSet
  private: 
   bool     m_strict_ignore;
 
+  std::string m_os_group;
+  std::string m_os_type;
+  
   std::set<std::string> m_ignore_names;
   std::set<std::string> m_match_names;
 

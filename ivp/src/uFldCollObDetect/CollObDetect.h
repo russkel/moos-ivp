@@ -2,7 +2,7 @@
 /*    NAME: Michael R. Benjamin                                  */
 /*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
 /*    FILE: CollObDetect.h                                       */
-/*    DATE: Septtember 2nd, 2019                                 */
+/*    DATE: September 2nd, 2019                                  */
 /*****************************************************************/
 
 #ifndef COLL_OB_DETECT_HEADER
@@ -35,8 +35,8 @@ class CollObDetect : public AppCastingMOOSApp
  protected:
   void registerVariables();
 
-  bool handleConfigFlag(std::string, std::string);
   bool handleMailKnownObstacle(std::string);
+  void handleMailKnownObstacleClear(std::string);
   bool handleMailNodeReport(std::string);
 
   void updateVehiDists();
@@ -59,8 +59,9 @@ class CollObDetect : public AppCastingMOOSApp
   
  private: // Configuration variables
 
-  // Core list of obtacles
+  // Core map of obtacles and time received
   std::map<std::string, XYPolygon> m_map_obstacles;
+  std::map<std::string, double>    m_map_ob_tstamp;
 
   // Params defining test/success
   double m_near_miss_dist;

@@ -6,6 +6,8 @@
 SET(SRC
   DubinsTurn.cpp
   DubinsCache.cpp
+  EdgeTag.cpp
+  EdgeTagSet.cpp
   AngleUtils.cpp
   ArtifactUtils.cpp
   WallEngine.cpp
@@ -25,7 +27,6 @@ SET(SRC
   PathUtils.cpp
   Seglr.cpp
   SeglrUtils.cpp
-  VPlug_AppCastSettings.cpp
   VPlug_DropPoints.cpp
   VPlug_GeoSettings.cpp
   VPlug_GeoShapes.cpp
@@ -69,6 +70,8 @@ SET(SRC
   )
 
 SET(HEADERS
+  EdgeTag.h
+  EdgeTagSet.h
   AngleUtils.h
   ArtifactUtils.h
   ConvexHullGenerator.h

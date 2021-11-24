@@ -483,7 +483,7 @@ bool HelmIvP::Iterate()
 	post_alias = "DESIRED_HEADING";
       if(m_helm_report.hasDecision(domain_var)) {
 	double domain_val = m_helm_report.getDecision(domain_var);
-	Notify(post_alias, domain_val);
+	Notify(m_helm_prefix + post_alias, domain_val);
       }
     }
   }
@@ -597,6 +597,9 @@ void HelmIvP::postBehaviorMessages()
 	    m_outgoing_iter[var] = m_helm_iteration;
 	    m_outgoing_sval[var] = sdata;
 	    m_outgoing_bhv[var]  = bhv_descriptor;
+
+	    if(var == "BHV_EVENT")
+	      reportEvent(sdata);
 	  }
 	}
 	else {
@@ -1159,12 +1162,14 @@ void HelmIvP::checkForTakeOver()
 bool HelmIvP::OnStartUp()
 {
   AppCastingMOOSApp::OnStartUp();
+  cout << "In Helm OnStartUp()" << endl;
 
   Notify("PHELMIVP_PID", getpid());
     
   m_helm_start_time = m_curr_time;
   if(!m_info_buffer) {
     m_info_buffer = new InfoBuffer;
+    m_info_buffer->setCurrTime(m_curr_time);
     m_info_buffer->setStartTime(m_helm_start_time);
   }
     
@@ -1210,6 +1215,8 @@ bool HelmIvP::OnStartUp()
       handled = setBooleanOnString(m_park_on_allstop, value);
     else if(param == "NODE_SKEW") 
       handled = handleConfigNodeSkew(value);
+    else if(param == "HELM_PREFIX") 
+      handled = setNonWhiteVarOnString(m_helm_prefix, value);
     else if((param == "HOLD_ON_APP") || (param == "HOLD_ON_APPS"))
       handled = handleConfigHoldOnApp(value);
     else if(param == "DOMAIN")

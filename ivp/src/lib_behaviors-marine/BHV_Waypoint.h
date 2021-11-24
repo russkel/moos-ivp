@@ -103,10 +103,6 @@ protected: // configuration parameters
   double      m_hint_nextpt_vertex_size;
 
 protected: // intermediate or object global variables.
-  double    m_osh;  // Ownship heading
-  double    m_osv;  // Ownship velocity
-  double    m_osx;  // Ownship x position
-  double    m_osy;  // Ownship y position
   
   // Time/Distance efficiency state information
   bool      m_odo_set_flag;
@@ -135,6 +131,8 @@ protected: // intermediate or object global variables.
   XYPoint   m_trackpt;
   XYPoint   m_markpt;
 
+  bool      m_waypt_hit;
+  
   XYPoint   m_prevpt;
 
   bool      m_greedy_tour_pending;

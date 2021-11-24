@@ -93,6 +93,7 @@ void showExampleConfigAndExit()
   blk("  // Configure key aspects of the node                          ");
   blk("  platform_type      = glider  "," // or {uuv,auv,ship,kayak}   ");
   blk("  platform_length    = 8       "," // meters.  Range [0,inf)    ");
+  blk("  platform_group     = alpha   "," // Default is no group       ");
   blk("  platform_color     = green   "," // or any legal color        ");
   blk("                                                                ");
   blk("  // Configure optional blackout functionality                  ");
@@ -111,11 +112,15 @@ void showExampleConfigAndExit()
   blu("  nohelm_threshold   = 5       "," // seconds                   ");
   blk("                                                                ");
   blk("  // Policy for filling in missing lat/lon from x/y or v.versa  ");
-  blu("  crossfill_policy   = literal "," // or {fill-empty,use-latest}");
+  blk("  // Valid policies: [literal], fill-empty, use-latest, global  ");
+  blu("  cross_fill_policy   = literal                                 ");
   blk("                                                                ");
   blk("  // Configure monitor/reporting of dual nav solution           ");
   blk("  alt_nav_prefix     = NAV_GT                                   ");
   blk("  alt_nav_name       = _GT                                      ");
+  blk("                                                                ");
+  blk("  // Set grace period before posting reports with no NAV info   ");
+  blu("  nav_grace_period = 25       "," // seconds. -1 means infinity ");
   blk("                                                                ");
   blk("  // Declare the vehicle to be part of group tango.             ");
   blk("  group = tango                                                 ");
@@ -157,6 +162,7 @@ void showInterfaceAndExit()
   blk("     completed_bhvs=none                                        ");
   blk("  IVPHELM_ENGAGED = ENGAGED                                     ");
   blk("  IVPHELM_ALLSTOP = clear                                       ");
+  blk("  NODE_GROUP_UPDATE = friendly                                  ");
   blk("                                                                ");
   blk("PUBLICATIONS:                                                   ");
   blk("------------------------------------                            ");

@@ -43,6 +43,7 @@ class PMV_MOOSApp : public AppCastingMOOSApp
 
   void setGUI(PMV_GUI* g_gui)            {m_gui=g_gui;}  
   void setAppCastRepo(AppCastRepo* repo) {m_appcast_repo=repo;}
+  void setRealmRepo(RealmRepo* repo)     {m_realm_repo=repo;}
   void setPendingEventsPipe(Threadsafe_pipe<MOOS_event>*); 
 
   // Only call these methods in the main FLTK l thread, for thread
@@ -51,6 +52,7 @@ class PMV_MOOSApp : public AppCastingMOOSApp
   void handleIterate(const MOOS_event & e);
   void handleStartUp(const MOOS_event & e);
   void handleAppCastRequesting(bool force=false);
+  void handleRealmCastRequesting();
 
  protected:
   bool buildReport();
@@ -64,7 +66,9 @@ class PMV_MOOSApp : public AppCastingMOOSApp
   std::string getContextKey(std::string);
   bool handleMailClear(std::string);
   bool handleMailCenter(std::string);
+  bool handleMailConfig(std::string) {return(true);}
   bool handleConfigCmd(std::string);
+  bool handleConfigWatchCluster(std::string);
 
   void handlePendingPostsFromGUI();
   void handlePendingCommandSummary();
@@ -85,8 +89,13 @@ class PMV_MOOSApp : public AppCastingMOOSApp
   double       m_appcast_last_req_time;
   double       m_appcast_request_interval;
 
+  RealmRepo   *m_realm_repo;
+  double       m_relcast_last_req_time;
+  double       m_relcast_request_interval;
+  
   unsigned int m_node_reports_received;
   unsigned int m_clear_geoshapes_received;
+  double       m_node_report_start;
   int          m_node_report_index;
   bool         m_log_the_image;
 
@@ -94,8 +103,10 @@ class PMV_MOOSApp : public AppCastingMOOSApp
   CommandSummary m_cmd_summary;
 
   unsigned int m_pmv_iteration;
+  unsigned int m_button_clicks;
 
   std::string  m_region_info;
+
 };
 
 #endif 

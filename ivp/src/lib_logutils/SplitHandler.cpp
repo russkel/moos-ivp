@@ -166,7 +166,8 @@ bool SplitHandler::handleMakeSplitFiles()
        (varname=="VIEW_SEGLIST") || (varname=="VIEW_CIRCLE")  ||
        (varname=="GRID_INIT")    || (varname=="VIEW_MARKER")  ||
        (varname=="GRID_DELTA")   || (varname=="VIEW_SEGLR")   ||
-       (varname=="VIEW_RANGE_PULSE"))
+       (varname=="VIEW_RANGE_PULSE")  ||
+       (varname=="VIEW_COMMS_PULSE"))
       varname = "VISUALS";
 
     // A measure implemented here to accommodate older alogfile formats where
@@ -195,6 +196,13 @@ bool SplitHandler::handleMakeSplitFiles()
 	bhv_name = findReplace(bhv_name, m_curr_helm_iter, "");
       varname = "BHV_IPF_" + bhv_name; 
       m_bhv_names.insert(bhv_name);
+    }
+
+    // Handle APP_LOG: Break out into sep files for each MOOSApp
+    if(varname == "APP_LOG") {
+      string src = getSourceName(line_raw);       
+      varname = "APP_LOG_" + src; 
+      m_applogging_app_names.insert(src);
     }
 
     // Part 1: Determine the vehicle name if not already known
@@ -325,15 +333,13 @@ bool SplitHandler::handleMakeSplitSummary()
     fprintf(f, "vlength=%s\n", m_vlength.c_str());
 
   if(m_bhv_names.size() != 0) {
-    fprintf(f, "bhvs=");
-    set<string>::iterator p;
-    for(p=m_bhv_names.begin(); p!=m_bhv_names.end(); p++) {
-      string bhv_name = *p;
-      if(p!=m_bhv_names.begin())
-	fprintf(f, ",");
-      fprintf(f, "%s", bhv_name.c_str());
-    }
-    fprintf(f, "\n");
+    string bhvs = stringSetToString(m_bhv_names);
+    fprintf(f, "bhvs=%s\n", bhvs.c_str());
+  }
+
+  if(m_applogging_app_names.size() != 0) {
+    string apps = stringSetToString(m_applogging_app_names);
+    fprintf(f, "applogging_apps=%s\n", apps.c_str());
   }
 
   map<string, string>::iterator p;

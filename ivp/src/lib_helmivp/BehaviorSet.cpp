@@ -270,7 +270,9 @@ SpecBuild BehaviorSet::buildBehaviorFromSpec(BehaviorSpec spec,
   
   bhv->setBehaviorType(bhv_kind);
   bhv->IvPBehavior::setParam("us", m_ownship);
-
+  if(spec.templating())
+    bhv->setDynamicallySpawnable(true);
+  
 
   // First apply all the behavior specs from the original specification
   // given in the .bhv file. All bad specs are noted, not just the first.
@@ -298,10 +300,31 @@ SpecBuild BehaviorSet::buildBehaviorFromSpec(BehaviorSpec spec,
       msg += "Line " + uintToString(bad_line) + ": " + orig;
       addWarning(msg);
     }
-
     specs_valid = specs_valid && valid;
   }
 
+  // June 30th, 2021: Additional check to see if collectively the
+  // params are valid, if there are otherwise no problems with individual
+  // params. 
+  if(specs_valid) {
+    cout << "Checking Param Collective: " << bhv->getDescriptor() << endl;
+    string msg = bhv->checkParamCollective();
+    cout << "Checking Param Collective Done: Msg:[" << msg << "]" << endl;
+    if(msg != "") {
+      specs_valid = false;
+      addWarning(msg);
+    }    
+  }
+
+  
+  string deprecated_msg = bhv->isDeprecated();
+  if(deprecated_msg != "") {
+    vector<string> svector = parseString(deprecated_msg, '#');
+    for(unsigned int i=0; i<svector.size(); i++)
+      addWarning(stripBlankEnds(svector[i]));
+  }
+
+  
   // Then apply all the behavior specs from an UPDATES string which may
   // possibly be empty.
   // NOTE: If the update_str is non-empty we can assume this is a spawning
@@ -528,6 +551,9 @@ IvPFunction* BehaviorSet::produceOF(unsigned int ix,
   
   // Possible vals: "completed", "idle", "running"
   new_activity_state = bhv->isRunnable();
+  
+  // Invoke the onEveryState() function applicable in all situations
+  bhv->onEveryState(new_activity_state);
   
   // ===================================================================
   // Part 2: With new_activity_state set, act appropriately for
@@ -886,7 +912,7 @@ bool BehaviorSet::filterBehaviorsPresent()
 }
 
 //------------------------------------------------------------
-// Procedure: getMessages
+// Procedure: getMessages()
 
 vector<VarDataPair> BehaviorSet::getMessages(unsigned int ix, 
 					     bool clear)

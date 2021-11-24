@@ -133,16 +133,20 @@ class ContactMgrV20 : public AppCastingMOOSApp
   double m_osh;
   double m_osv;
 
+  std::string m_os_group;
+  std::string m_os_type;
+
   double m_contacts_recap_posted;
 
   std::set<std::string> m_filtered_vnames;
 
-  // Optional requested range reports
+  // Optional requested range reports all keyed on varname
   std::map<std::string, double>      m_map_rep_range;
   std::map<std::string, double>      m_map_rep_reqtime;
   std::map<std::string, std::string> m_map_rep_group;
   std::map<std::string, std::string> m_map_rep_vtype;
   std::map<std::string, std::string> m_map_rep_contacts;
+  std::map<std::string, bool>        m_map_rep_refresh;
 
 
   //  std::map<std::string, std::string> m_map_rep_duration;

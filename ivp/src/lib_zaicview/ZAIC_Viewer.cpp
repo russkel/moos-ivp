@@ -61,6 +61,13 @@ ZAIC_Viewer::ZAIC_Viewer(int gx, int gy, int gw, int gh, const char *gl)
   setParam("gridshade", "default");
   setParam("backshade", "default");
   setParam("lineshade", "default");
+
+  // The use_high_res_GL function is supported in more recent FLTK
+  // packages. FLTK on older non-MacOS systems may not have this
+  // feature. It is mostly needed to support Mac Retina displays.
+#ifdef __APPLE__
+  Fl::use_high_res_GL(1);
+#endif
 }
 
 //-------------------------------------------------------------
@@ -101,8 +108,15 @@ void ZAIC_Viewer::draw()
   glClearColor(0.5,0.5,0.5 ,0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
+  // The pixel_w/h() functions are supported in more recent FLTK
+  // packages. FLTK on older non-MacOS systems may not have this
+  // feature. It is mostly needed to support Mac Retina displays.
+#ifdef __APPLE__
+  glViewport(0, 0, pixel_w(), pixel_h());
+#else
   glViewport(0, 0, w(), h());
-
+#endif
+  
   drawAxes();
   if(m_draw_labels)
     drawLabels();
@@ -258,6 +272,7 @@ void ZAIC_Viewer::drawLabels()
 
 void ZAIC_Viewer::drawText(int x, int y, string str)
 {
+#if 0
   int slen = str.length();
   char *buff = new char(slen+1);
   strncpy(buff, str.c_str(), slen);
@@ -265,6 +280,8 @@ void ZAIC_Viewer::drawText(int x, int y, string str)
   glRasterPos3f(x, y, 0);
   gl_draw(buff, slen);
   delete(buff);
+#endif
+  gl_draw(str.c_str(), str.length());
 }
 
 //-------------------------------------------------------------

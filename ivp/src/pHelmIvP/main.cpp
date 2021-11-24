@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
   string mission_file;
   string run_command = argv[0];
   string verbose_setting;
-
+  
   vector<string>  bhv_files;
 
   for(int i=1; i<argc; i++) {
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     else if(i==2)
       run_command = argi;
   }
-  
+
   if(mission_file == "")
     showHelpAndExit();
   

@@ -29,6 +29,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <list>
 #include <time.h>
 
 std::vector<std::string> parseString(const std::string&, char);
@@ -56,8 +57,13 @@ bool vectorContains(const std::vector<std::string>&,
 		    const std::string&,
 		    bool case_sensitive=true);
 
+bool listContains(const std::list<std::string>&, 
+		  const std::string&,
+		  bool case_sensitive=true);
+
 std::string augmentSpec(const std::string&, const std::string&, char=',');
 std::string removeWhite(const std::string&);
+std::string removeWhiteEnd(const std::string&);
 std::string removeWhiteNL(const std::string&);
 
 std::string biteString(std::string&, char);
@@ -65,9 +71,11 @@ std::string biteStringX(std::string&, char);
 std::string biteString(std::string&, char, char);
 
 std::string rbiteString(std::string&, char);
+std::string rbiteStringX(std::string&, char);
 
 
 std::string stripBlankEnds(const std::string&);
+std::string stripBlankEnd(const std::string&);
 std::string tolower(const std::string&);
 std::string toupper(const std::string&);
 std::string truncString(const std::string&, unsigned int newlen, 
@@ -94,6 +102,7 @@ std::vector<std::string> padVector(const std::vector<std::string>&,
 std::string stripComment(const std::string&, const std::string&);
 std::string stripQuotes(const std::string&);
 std::string stripBraces(const std::string&);
+std::string stripChevrons(const std::string&);
 std::string doubleToHex(double);
 
 std::string svectorToString(const std::vector<std::string>&, char=',');
@@ -130,6 +139,7 @@ bool  isNumber(const std::string&, bool=true);
 bool  isAlphaNum(const std::string&, const std::string& s="");
 bool  isQuoted(const std::string&);
 bool  isBraced(const std::string&);
+bool  isChevroned(const std::string&);
 
 int   getArg(int, char**, int, const char*, const char *s=0);
 bool  scanArgs(int, char**, const char*, const char *a=0, const char *b=0);
@@ -147,6 +157,14 @@ bool  setIntOnString(int& int_val, std::string str);
 bool  setPosDoubleOnString(double& dval, std::string str);
 bool  setNonNegDoubleOnString(double& dval, std::string str);
 bool  setNonWhiteVarOnString(std::string& svar, std::string str);
+bool  setMinPartOfPairOnString(double& minval, double& maxval,
+			       std::string str, bool negok=false);
+bool  setMaxPartOfPairOnString(double& minval, double& maxval,
+			       std::string str, bool negok=false);
+bool  setDoubleRngOnString(double& dval, std::string str,
+			   double minv, double maxv);
+bool  setDoubleStrictRngOnString(double& dval, std::string str,
+				 double minv, double maxv);
 
 bool  okFileToRead(std::string);
 bool  okFileToWrite(std::string);
@@ -174,7 +192,16 @@ std::vector<std::string> joinLines(const std::vector<std::string>&,
 
 std::vector<std::string> breakLen(const std::vector<std::string>&,
 				  unsigned int maxlen);
+std::vector<std::string> breakLen(const std::string&,
+				  unsigned int maxlen);
 
 std::string checksumHexStr(std::string);
+
+std::string stringListToString(std::list<std::string>, char sep_char=',');
+std::string stringSetToString(std::set<std::string>, char sep_char=',');
+std::string stringVectorToString(std::vector<std::string>, char sep_char=',');
+std::string uintVectorToString(std::vector<unsigned int>, char sep_char=',');
+
+std::string intToMonth(int, bool brief=false);
 
 #endif

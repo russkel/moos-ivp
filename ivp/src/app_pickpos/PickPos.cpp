@@ -72,14 +72,18 @@ PickPos::PickPos()
   m_pick_amt = 10;
 
   m_vnames  = false;
+  m_colors  = false;
   m_verbose = false;
 
+  m_reverse_names = false;
+  
   m_grp_type = "random";
   m_output_type = "full";
 
   m_headers_enabled = false;
 
   setVNameCache();
+  setColorCache();
 }
 
 
@@ -189,6 +193,29 @@ bool PickPos::setVNames(string str)
     string name = stripBlankEnds(names[i]);
     if(i < m_vname_cache.size())
       m_vname_cache[i] = name;
+  }
+    
+  return(true);
+}
+
+//---------------------------------------------------------
+// Procedure: setColors()
+
+bool PickPos::setColors(string str)
+{
+  m_colors = true;
+  
+  vector<string> colors = parseString(str, ',');
+  for(unsigned int i=0; i<colors.size(); i++) {
+    string color = stripBlankEnds(colors[i]);
+    if(!isColor(color))
+      return(false);
+  }
+
+  for(unsigned int i=0; i<colors.size(); i++) {
+    string color = stripBlankEnds(colors[i]);
+    if(i < m_color_cache.size())
+      m_color_cache[i] = color;
   }
     
   return(true);
@@ -451,6 +478,7 @@ bool PickPos::pick()
   pickHeadingVals();
   pickSpeedVals();
   pickVehicleNames();
+  pickColors();
   pickGroupNames();
   printChoices();
   
@@ -746,18 +774,18 @@ void PickPos::setVNameCache()
   m_vname_cache.push_back("ula");     m_vname_cache.push_back("val");
   m_vname_cache.push_back("wes");     m_vname_cache.push_back("xiu");
   m_vname_cache.push_back("yen");     m_vname_cache.push_back("zan");
-  m_vname_cache.push_back("apia");    m_vname_cache.push_back("baku");
+  m_vname_cache.push_back("apia");    m_vname_cache.push_back("baka");
   m_vname_cache.push_back("cary");    m_vname_cache.push_back("doha");
-  m_vname_cache.push_back("elko");    m_vname_cache.push_back("fahy");
+  m_vname_cache.push_back("evie");    m_vname_cache.push_back("fahy");
   m_vname_cache.push_back("galt");    m_vname_cache.push_back("hays");
-  m_vname_cache.push_back("iola");    m_vname_cache.push_back("juba");
+  m_vname_cache.push_back("iola");    m_vname_cache.push_back("jing");
   m_vname_cache.push_back("kiev");    m_vname_cache.push_back("lima");
   m_vname_cache.push_back("mesa");    m_vname_cache.push_back("nuuk");
   m_vname_cache.push_back("oslo");    m_vname_cache.push_back("pace");
   m_vname_cache.push_back("quay");    m_vname_cache.push_back("rome");
   m_vname_cache.push_back("sako");    m_vname_cache.push_back("troy");
   m_vname_cache.push_back("ubly");    m_vname_cache.push_back("vimy");
-  m_vname_cache.push_back("waco");    m_vname_cache.push_back("xian");
+  m_vname_cache.push_back("waco");    m_vname_cache.push_back("xane");
   m_vname_cache.push_back("york");    m_vname_cache.push_back("zahl");
 }
 
@@ -772,7 +800,66 @@ void PickPos::pickVehicleNames()
   
   for(unsigned int i=0; i<m_pick_amt; i++) {
     int index = i % choices;
+    if(m_reverse_names)
+      index = (choices-1)-i;
+
     m_pick_vnames.push_back(m_vname_cache[index]);
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: setColorCache()
+
+void PickPos::setColorCache()
+{
+  m_color_cache.clear();
+
+  m_color_cache.push_back("yellow"); 
+  m_color_cache.push_back("red"); 
+  m_color_cache.push_back("dodger_blue"); 
+  m_color_cache.push_back("green"); 
+  m_color_cache.push_back("purple"); 
+  m_color_cache.push_back("orange"); 
+  m_color_cache.push_back("white"); 
+  m_color_cache.push_back("dark_green"); 
+  m_color_cache.push_back("dark_red"); 
+  m_color_cache.push_back("cyan"); 
+
+  m_color_cache.push_back("coral"); 
+  m_color_cache.push_back("brown"); 
+  m_color_cache.push_back("bisque"); 
+  m_color_cache.push_back("white"); 
+  m_color_cache.push_back("pink");
+  m_color_cache.push_back("darkslateblue"); 
+  m_color_cache.push_back("brown"); 
+  m_color_cache.push_back("burlywood"); 
+  m_color_cache.push_back("goldenrod"); 
+  m_color_cache.push_back("ivory"); 
+
+  m_color_cache.push_back("khaki"); 
+  m_color_cache.push_back("lime"); 
+  m_color_cache.push_back("peru"); 
+  m_color_cache.push_back("powderblue"); 
+  m_color_cache.push_back("plum"); 
+  m_color_cache.push_back("sienna"); 
+  m_color_cache.push_back("sandybrown"); 
+  m_color_cache.push_back("navy"); 
+  m_color_cache.push_back("olive"); 
+  m_color_cache.push_back("magenta"); 
+}
+
+//---------------------------------------------------------
+// Procedure: pickColors()
+
+void PickPos::pickColors()
+{
+  int choices = (int)(m_color_cache.size());
+  if(choices == 0)
+    return;
+  
+  for(unsigned int i=0; i<m_pick_amt; i++) {
+    int index = i % choices;
+    m_pick_colors.push_back(m_color_cache[index]);
   }
 }
 
@@ -818,6 +905,12 @@ void PickPos::printChoices()
       if(line != "")
 	line += ",";
       line += m_pick_vnames[i];
+    }
+      
+    if(m_colors && (i<m_pick_colors.size())) {
+      if(line != "")
+	line += ",";
+      line += m_pick_colors[i];
     }
       
     if((m_groups.size() > 0) && (i<m_pick_groups.size())) {

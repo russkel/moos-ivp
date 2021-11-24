@@ -42,10 +42,12 @@ public:
   void         onSetParamComplete();
   void         onIdleToRunState();
   void         onInactiveState();
+  void         onEveryState(std::string);
   void         onSpawn();
   void         postConfigStatus();
   double       getDoubleInfo(std::string);
   bool         isConstraint() {return(true);}
+  std::string  isDeprecated();
 
  protected: 
   bool   handleParamVisualHints(std::string);
@@ -64,6 +66,11 @@ public:
   bool        m_use_refinery;
   std::string m_pwt_grade;
 
+  std::string m_resolved_obstacle_var;
+  std::string m_obstacle_id;
+
+  bool        m_hide_deprecation_warning;
+  
  protected: // State variables
 
   double  m_obstacle_relevance;

@@ -26,6 +26,7 @@
 #ifndef XY_GEOM_UTILS_HEADER
 #define XY_GEOM_UTILS_HEADER
 
+#include <vector>
 #include "XYPoint.h"
 #include "XYPolygon.h"
 
@@ -92,6 +93,7 @@ void    projectPoint(double ANGLE, double DIST, double cx,
 		     double cy,    double& rx,  double &ry);
 XYPoint projectPoint(double ANGLE, double DIST, double cx, double cy);
 
+XYPoint midPoint(const XYPoint& pt1, const XYPoint& pt2);
 
 void   addVectors(double deg1, double mag1, double deg2, double mag2,
 		  double& rdeg, double& rmag); 
@@ -157,6 +159,10 @@ double polyRayCPA(double rx, double ry, double ray_angle,
 bool randPointOnPoly(double vx, double vy, const XYPolygon&,
 		     double& ix, double& iy);
 
+double polyWidth(XYPolygon, double angle=0);
+double polyHeight(XYPolygon, double angle=0);
+
+void shiftVertices(std::vector<double>& vx, std::vector<double>& vy); 
 
 
 // DEPRECATED INTERFACES

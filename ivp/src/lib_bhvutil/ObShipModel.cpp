@@ -53,6 +53,8 @@ ObShipModel::ObShipModel()
   m_pwt_inner_dist = 10;
   m_pwt_outer_dist = 50;
   m_allowable_ttc  = 20;
+
+  m_completed_dist = 50;
   
   // State variables
   m_cx = 0;
@@ -522,6 +524,12 @@ double ObShipModel::getRangeRelevance() const
 
 // ----------------------------------------------------------
 // Procedure: isObstacleAft()
+//      Note: The xbng parameter generalizes this function. Normally a
+//            point is "aft" of ownship its relative bearing is in the
+//            range (90,270). With the xbng parameter, "aft" can be
+//            generalized, e.g., xbng=10 means the polygon must be at
+//            least 10 degrees abaft of beam.
+
 
 bool ObShipModel::isObstacleAft(double xbng) const
 {

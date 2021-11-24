@@ -57,6 +57,8 @@ public:
   void crossFillGlobalToLocal(NodeRecord&);
   void handleHelmSwitch();
 
+  void updateNavWarning(bool ok_nav) const;
+  
  protected: // Configuration Variables (Node Reports)
   std::string  m_vessel_name;
   std::string  m_crossfill_policy;
@@ -72,10 +74,15 @@ public:
   std::string  m_helm_allstop_mode;
   std::string  m_alt_nav_prefix;
   std::string  m_alt_nav_name;
+  std::string  m_alt_nav_group;
   std::string  m_helm_status_primary;
   std::string  m_helm_status_standby;
   double       m_helm_lastmsg;
 
+  // Oct 18, 2021
+  double m_nav_grace_period;
+  bool m_nav_warning_posted;
+  
   NodeRecord   m_record;
   NodeRecord   m_record_gt;
   double       m_record_gt_updated;

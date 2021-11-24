@@ -45,26 +45,24 @@ class GrepHandler
   void setFinalEntryOnly(bool v)   {m_final_entry_only=v;}
   void setFinalTimeOnly(bool v)    {m_final_time_only=v;}
   void setFinalValueOnly(bool v)   {m_final_value_only=v;}
-  
+  void setValuesOnly(bool v)       {m_values_only=v;}
+  void setTimesOnly(bool v)        {m_times_only=v;}
+  void setSortEntries(bool v)      {m_sort_entries=v;}
+  void setRemoveDuplicates(bool v) {m_rm_duplicates=v;}
+
  protected:
+
+  bool checkRetain(std::string& line_raw);
+  
   std::vector<std::string> getMatchedKeys();
   std::vector<std::string> getUnMatchedKeys();
 
   std::string quickPassGetVName(const std::string);
   
-  void outputLine(const std::string& line, const std::string& varname="");
-  void ignoreLine(const std::string& line, const std::string& varname="");
+  void outputLine(const std::string& line);
+  void ignoreLine(const std::string& line);
   
- protected:
-
-  std::vector<std::string> m_keys;
-  std::vector<bool>        m_pmatch;
-
-  double m_lines_removed;
-  double m_lines_retained;
-  double m_chars_removed;
-  double m_chars_retained;
-  bool   m_file_overwrite;
+ protected: // Config vars
 
   std::string m_var_condition;
   bool        m_var_condition_met;
@@ -75,22 +73,33 @@ class GrepHandler
   bool        m_final_entry_only;
   bool        m_final_time_only;
   bool        m_final_value_only;
-  std::string m_final_line;
+  bool        m_values_only;
+  bool        m_times_only;
+
+  bool        m_sort_entries;
+  bool        m_rm_duplicates;
   
-  std::set<std::string> m_vars_retained;
-  std::set<std::string> m_vars_removed;
+  double m_cache_size;
   
   FILE *m_file_in;
   FILE *m_file_out;
+
+ protected: // State vars
+  std::string m_final_line;
+  std::string m_last_tstamp;
+  
+  std::vector<std::string> m_keys;
+  std::vector<bool>        m_pmatch;
+
+  double m_lines_removed;
+  double m_lines_retained;
+  double m_chars_removed;
+  double m_chars_retained;
+  bool   m_file_overwrite;
+
+  double m_re_sorts;
+  
+  std::set<std::string> m_vars_retained;
 };
 
 #endif
-
-
-
-
-
-
-
-
-

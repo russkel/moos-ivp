@@ -434,8 +434,22 @@ bool segmentsCross(double x1, double y1, double x2, double y2,
     double intercept1 = y2 - (slope1 * x2);
     double slope2 = (y4-y3)/(x4-x3);
     double intercept2 = y4 - (slope2 * x4);
-    if(slope1 == slope2)
-      return(intercept1 == intercept2);
+    if(slope1 == slope2) {           // bug fix mikerb Nov0120
+      if(intercept1 != intercept2)
+	return(false);
+      double xmin12 = x1;
+      double xmax12 = x2;
+      if(x1>x2) {
+	xmin12 = x2;
+	xmax12 = x1;
+      }
+      if((x3 < xmin12) && (x4 < xmin12))
+	return(false);
+      if((x3 > xmax12) && (x4 > xmax12))
+	return(false);
+      return(true);
+    }
+    
     double intx = (intercept2 - intercept1) / (slope1 - slope2);
 
     if((intx < x1) && (intx < x2))
@@ -961,15 +975,21 @@ void perpSegIntPt(double x1, double y1, double x2, double y2,
 void perpLineIntPt(double x1, double y1, double x2, double y2, 
 		   double qx, double qy, double& rx, double& ry)
 {
-  // handle the special case where the segment is vertical
-  if(x1 == x2) {
+  double xdelta = x1-x2;
+  if(xdelta < 0)
+    xdelta = -xdelta;
+  // handle special case where line is vertical or essentially vertical
+  if(xdelta < 0.0001) {
     rx = x1;
     ry = qy;
     return;
   }
 
-  // handle the special case where the segment is horizontal
-  if(y1 == y2) {
+  // handle special case where segment is horizontal or essentially so
+  double ydelta = y1-y2;
+  if(ydelta < 0)
+    ydelta = -ydelta;
+  if(ydelta < 0.0001) {
     rx = qx;
     ry = y1;
     return;
@@ -1044,10 +1064,23 @@ XYPoint projectPoint(double degval, double dist, double cx, double cy)
   return(return_point);
 }
 
+//---------------------------------------------------------------
+// Procedure: midPoint()
+
+XYPoint midPoint(const XYPoint& pt1, const XYPoint& pt2)
+{
+  double x1 = pt1.x();
+  double y1 = pt1.y();
+  double x2 = pt2.x();
+  double y2 = pt2.y();
+  double mx = (x1+x2)/2;
+  double my = (y1+y2)/2;
+  XYPoint mid_point(mx, my);
+  return(mid_point);
+}
 
 //---------------------------------------------------------------
-// Procedure: addVectors
-//   Purpose: 
+// Procedure: addVectors()
 
 void addVectors(double deg1, double mag1, double deg2, 
 		double mag2, double &rdeg, double &rmag)
@@ -1932,3 +1965,83 @@ bool randPointOnPoly(double vx, double vy,
 }
 
 
+//---------------------------------------------------------------
+// Procedure: polyWidth()
+
+double polyWidth(XYPolygon poly, double angle)
+{
+  poly.rotate(angle);
+
+  double xmin = 0;
+  double xmax = 0;
+  
+  unsigned int vsize = poly.size();
+  for(unsigned int i=0; i<vsize; i++) {
+    double px = poly.get_vx(i);
+    if(i == 0) {
+      xmin = px;
+      xmax = px;
+    }
+    else if(px < xmin)
+      xmin = px;
+    else if(px > xmax)
+      xmax = px;
+  }
+
+  return(xmax - xmin);
+}
+
+//---------------------------------------------------------------
+// Procedure: polyHeight()
+
+double polyHeight(XYPolygon poly, double angle)
+{
+  poly.rotate(angle);
+
+  double ymin = 0;
+  double ymax = 0;
+  
+  unsigned int vsize = poly.size();
+  for(unsigned int i=0; i<vsize; i++) {
+    double py = poly.get_vy(i);
+    if(i == 0) {
+      ymin = py;
+      ymax = py;
+    }
+    else if(py < ymin)
+      ymin = py;
+    else if(py > ymax)
+      ymax = py;
+  }
+
+  return(ymax - ymin);
+}
+
+
+//---------------------------------------------------------------
+// Procedure: shiftVertices()
+//   Purpose: Shift each vertex index to be lower by one, and moving
+//            the first vertex to the end.
+//            A convenience function for certain other geometric
+//            calculations. 
+
+void shiftVertices(vector<double>& vx, vector<double>& vy)
+{
+  if((vx.size() != vy.size()) || (vx.size() < 2))
+    return;
+  
+  vector<double> new_vx;
+  vector<double> new_vy;
+  for(unsigned int i=1; i<vx.size(); i++) {
+    new_vx.push_back(vx[i]);
+    new_vy.push_back(vy[i]);
+  }
+  new_vx.push_back(vx[0]);
+  new_vy.push_back(vy[0]);
+
+  vx = new_vx;
+  vy = new_vy;
+}
+
+
+  

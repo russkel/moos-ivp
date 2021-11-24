@@ -106,9 +106,11 @@ class ObShipModel
   bool   osHdgSpdInBasinMinor(double osh, double osv) const;
 
   std::string getFailedExpandPolyStr(bool clear=true);
-    
+
+  std::string getObstacleLabel() const {return(m_obstacle.get_label());}
+  
   double getRangeRelevance() const;
-  bool   isObstacleAft(double xbng) const;
+  bool   isObstacleAft(double xbng=0) const;
   bool   isValid() const;
   
  protected:

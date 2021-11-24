@@ -137,16 +137,16 @@ SET(IVP_NON_GUI_LIBS
    lib_ivpcore
    lib_ivpsolve
    lib_logic
+   lib_evalutil
    lib_encounters
    lib_apputil
+   lib_realm
    lib_contacts
    lib_obstacles
    lib_ufield
-   lib_ufld_hazards
    lib_logutils
    lib_mbutil
    lib_manifest
-   lib_henrik_anneal
    )
 
 IF (${WIN32})
@@ -223,6 +223,10 @@ ENDFOREACH(L)
 #---------------------------------------------------------------------
 
 SET(ROBOT_APPS
+  pRealm
+  app_alogbin
+  app_alogtm
+  app_alogeval
   app_alogload
   app_aloggrep
   app_alogscan
@@ -237,7 +241,10 @@ SET(ROBOT_APPS
   app_nsplug
   app_pickpos
   app_manifest_test
+  app_tagrep
+  app_gen_moos_app
   pEchoVar
+  pMissionEval
   pEvalLoiter
   pHelmIvP
   pMarinePID
@@ -247,7 +254,6 @@ SET(ROBOT_APPS
   pNodeReporter
   pMovingSurvey
   pObstacleMgr
-  pFrontEstimate
   uFldMessageHandler
   uFldNodeBroker
   uHelmScope
@@ -271,7 +277,8 @@ SET(ROBOT_APPS
 IF( EXISTS ./pSafetyRetreat )
   LIST(APPEND ROBOT_APPS pSafetyRetreat
 )  
-ENDIF( EXISTS ./pSafetyRetreat )
+#ENDIF( EXISTS ./pSafetyRetreat )
+ENDIF()
 
 message(" ROBOT_APPS: ${ROBOT_APPS}")
 
@@ -287,7 +294,6 @@ SET(IVP_NON_GUI_APPS
   app_alogsort
   app_alogcheck
   app_alogtest
-  app_gen_hazards
   app_gen_obstacles
   app_bhv2graphviz
   pXRelay
@@ -301,16 +307,10 @@ SET(IVP_NON_GUI_APPS
   uFldBeaconRangeSensor
   uFldContactRangeSensor
   uFldObstacleSim
-  uFldHazardSensor
-  uFldHazardMgr
-  uFldHazardMetric
   uFldGenericSensor
   uFldWrapDetect
   pSearchGrid
   uSimMarine
-  pFrontGridRender
-  pGradeFrontEstimate
-  uFldCTDSensor
   )
 
 #---------------------------------------------------------------------

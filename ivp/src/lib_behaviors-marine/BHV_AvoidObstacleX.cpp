@@ -1,5 +1,5 @@
 /*****************************************************************/
-/*    NAME: Michael Benjamin, Henrik Schmidt, and John Leonard   */
+/*    NAME: Michael Benjamin                                     */
 /*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
 /*    FILE: BHV_AvoidObstacle.cpp                                */
 /*    DATE: Aug 2nd 2006                                         */
@@ -72,10 +72,15 @@ BHV_AvoidObstacleX::BHV_AvoidObstacleX(IvPDomain gdomain) :
   m_use_refinery     = false;
   m_resolved_pending = false;
 
+  m_resolved_obstacle_var = "OBM_RESOLVED";
+  
+  m_hide_deprecation_warning = false;
+  
   // Initialize state vars
   m_obstacle_relevance = 0;
 
   addInfoVars("NAV_X, NAV_Y, NAV_HEADING");
+  addInfoVars(m_resolved_obstacle_var);
 }
 
 //-----------------------------------------------------------
@@ -114,6 +119,10 @@ bool BHV_AvoidObstacleX::setParam(string param, string val)
     return(handleParamVisualHints(val));
   else if(param == "use_refinery")
     return(setBooleanOnString(m_use_refinery, val));
+  else if(param == "id")
+    return(setNonWhiteVarOnString(m_obstacle_id, val));
+  else if(param == "i_understand_this_behavior_is_deprecated")
+    return(setBooleanOnString(m_hide_deprecation_warning, val));
   else
     return(false);
 
@@ -134,12 +143,28 @@ void BHV_AvoidObstacleX::onSetParamComplete()
 }
 
 //-----------------------------------------------------------
+// Procedure: isDeprecated()
+//   Purpose: Users of this behavior will get a configuration warning unless
+//            they use the "i_understand" parameter, essentially saying use
+//            at your own risk.
+
+string BHV_AvoidObstacleX::isDeprecated()
+{
+  if(m_hide_deprecation_warning)
+    return("");
+  
+  string msg;
+  msg += "AvoidObstacleX not supported. Use AvoidObstacleV21 instead.";
+  msg += "# Set i_understand_this_behavior_is_deprecated=true to suppress this warning";  
+  return(msg);
+}
+
+//-----------------------------------------------------------
 // Procedure: onHelmStart()
 
 void BHV_AvoidObstacleX::onHelmStart()
 {
-  //if(isDynamicallySpawned() && (m_update_var != "")) {
-  if(1) {
+  if(isDynamicallySpawnable() && (m_update_var != "")) {
     double pwt_outer_dist = m_obship_model.getPwtOuterDist();
     string alert_request = "name=" + m_descriptor;
     alert_request += ",update_var=" + m_update_var;
@@ -149,11 +174,37 @@ void BHV_AvoidObstacleX::onHelmStart()
 }
   
 //-----------------------------------------------------------
-// Procedure: onIdleState
+// Procedure: onEveryState()
+
+void BHV_AvoidObstacleX::onEveryState(string str)
+{
+  // Get list of all obstacles declared to be resolved by the obstacle mgr
+  bool ok = true;
+  vector<string> obstacles_resolved;
+  obstacles_resolved = getBufferStringVector(m_resolved_obstacle_var, ok);
+  if(!ok)
+    return;
+
+  // Check ids of all resolved obstacles against our own id. If match then
+  // declare the resolution to be pending.
+  for(unsigned int i=0; i<obstacles_resolved.size(); i++) {
+    string obstacle_id = obstacles_resolved[i];
+    postMessage("NOTED_RESOLVED", obstacle_id);
+
+    if(m_obstacle_id == obstacle_id)
+      m_resolved_pending = true;
+  }
+}
+
+//-----------------------------------------------------------
+// Procedure: onIdleState()
 
 void BHV_AvoidObstacleX::onIdleState()
 {
   postErasablePolygons();
+
+  if(m_resolved_pending)
+    setComplete();
 }
 
 //-----------------------------------------------------------
@@ -165,7 +216,7 @@ void BHV_AvoidObstacleX::onCompleteState()
 }
 
 //-----------------------------------------------------------
-// Procedure: onInactiveState
+// Procedure: onInactiveState()
 
 void BHV_AvoidObstacleX::onInactiveState()
 {
@@ -173,7 +224,7 @@ void BHV_AvoidObstacleX::onInactiveState()
 }
 
 //-----------------------------------------------------------
-// Procedure: onIdleToRunState
+// Procedure: onIdleToRunState()
 
 void BHV_AvoidObstacleX::onIdleToRunState()
 {

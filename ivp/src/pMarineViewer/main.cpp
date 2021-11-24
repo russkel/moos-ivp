@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
   cout << termColor() << endl;
 
   AppCastRepo appcast_repo;
+  RealmRepo   realm_repo;
 
   int gui_wid = 0.85 * Fl::w();
   int gui_hgt = 0.85 * Fl::h();
@@ -93,7 +94,7 @@ int main(int argc, char *argv[])
 
   // For document screen shots:
   // PMV_GUI* gui = new PMV_GUI(1100,640, "pMarineViewer");
-  string title_base = "pMarineViewer (MIT Version 19.8 abe)";
+  string title_base = "pMarineViewer (MIT Version 19.8.2 trunk)";
   PMV_GUI* gui = new PMV_GUI(gui_wid, gui_hgt, title_base.c_str());
   if(!gui) {
     cout << "Unable to instantiate the GUI - exiting." << endl;
@@ -102,13 +103,14 @@ int main(int argc, char *argv[])
   gui->setTitleBase(title_base);
   gui->setVerbose(verbose);
 
-
   PMV_MOOSApp thePort;
 
   thePort.setGUI(gui);
   thePort.setPendingEventsPipe(& g_pending_moos_events);
   thePort.setAppCastRepo(&appcast_repo);
+  thePort.setRealmRepo(&realm_repo);
   gui->setAppCastRepo(&appcast_repo);
+  gui->setRealmRepo(&realm_repo);
   
   // start the MOOSPort in its own thread
   

@@ -41,6 +41,7 @@ class ObstacleSim : public AppCastingMOOSApp
   void handleConfigObstacleDurations();
 
   bool handleMailNodeReport(std::string);
+  bool handleMailPointSize(std::string);
 
   void postObstaclesRefresh();
   void postObstaclesErase();
@@ -77,6 +78,7 @@ class ObstacleSim : public AppCastingMOOSApp
   // Pseudo LIDAR generation mode
   bool    m_post_points;
   double  m_rate_points;
+  double  m_point_size;
   
   // Params for random durations
   double  m_min_duration;
@@ -86,6 +88,9 @@ class ObstacleSim : public AppCastingMOOSApp
   // Params for resetting the obs field
   double       m_reset_interval;
   double       m_reset_range;
+
+  //range of the sensor for generating point updates
+  double m_sensor_range;
 
 private: // State variables
 

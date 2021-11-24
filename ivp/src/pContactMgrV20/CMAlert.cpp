@@ -60,6 +60,9 @@ bool CMAlert::configFilter(string param, string value)
     return(m_filter_set.addMatchRegion(value));
   else if(param == "ignore_region")
     return(m_filter_set.addIgnoreRegion(value));
+
+  else if(param == "strict_ignore")
+    return(m_filter_set.setStrictIgnore(value));
   
   return(false);
 }
@@ -190,26 +193,58 @@ bool CMAlert::addAlertOnFlag(string str)
   return(true);    
 }
 
+#if 0
+bool CMAlert::addAlertOnFlag(string str)
+{
+  vector<string> svector = parseString(str, '#');
+  for(unsigned int i=0; i<svector.size(); i++) {
+    // Sanity check: Make sure this isn't a duplicate
+    string str = stripBlankEnds(svector[i]);
+    if(m_on_flags_raw.count(str))
+      continue;
+
+    m_on_flags_raw.insert(str);
+    
+    // Ok, create and add the VarDataPair
+    string lft = biteStringX(str, '=');
+    string rgt = str;
+    
+    if((lft == "") || (rgt == ""))
+      return(false);
+    
+    VarDataPair pair(lft, rgt, "auto");
+    m_on_flags.push_back(pair);
+    
+  }
+  return(true);  
+}
+#endif
+
 //---------------------------------------------------------------
 // Procedure: addAlertOffFlag
 
 bool CMAlert::addAlertOffFlag(string str)
 {
-  // Sanity check: Make sure this isn't a duplicate
-  str = stripBlankEnds(str);
-  if(m_off_flags_raw.count(str))
-    return(true);
-  m_off_flags_raw.insert(str);
+  vector<string> svector = parseString(str, '#');
+  for(unsigned int i=0; i<svector.size(); i++) {
+    // Sanity check: Make sure this isn't a duplicate
+    string str = stripBlankEnds(svector[i]);
 
-  // Ok, create and add the VarDataPair
-  string lft = biteStringX(str, '=');
-  string rgt = str;
-
-  if((lft == "") || (rgt == ""))
-    return(false);
+    if(m_off_flags_raw.count(str))
+      continue;
+    m_off_flags_raw.insert(str);
+    
+    // Ok, create and add the VarDataPair
+    string lft = biteStringX(str, '=');
+    string rgt = str;
+    
+    if((lft == "") || (rgt == ""))
+      return(false);
   
-  VarDataPair pair(lft, rgt, "auto");
-  m_off_flags.push_back(pair);
+    VarDataPair pair(lft, rgt, "auto");
+    m_off_flags.push_back(pair);
+  }
+  
   return(true);    
 }
 
@@ -250,7 +285,7 @@ vector<VarDataPair> CMAlert::getAlertOffFlags() const
 
 //---------------------------------------------------------------
 // Procedure: getSummary()
-//   Example: onflag = SAY_MOOS = hello
+//   Example: on_flag = SAY_MOOS = hello
 //            match_type = usv
 //            ignore_region = pts={}
 

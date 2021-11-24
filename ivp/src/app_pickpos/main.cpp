@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
     }
     else if((argi == "--multiline") || (argi=="--ml") || (argi=="-ml"))
       handled = pickpos.setMultiLine();
+    else if((argi == "--reverse_names") || (argi=="-r"))
+      handled = pickpos.setReverseNames();
     else if(strBegins(argi, "--amt="))
       handled = pickpos.setPickAmt(argi.substr(6));
     else if(strBegins(argi, "--posfile="))
@@ -82,8 +84,12 @@ int main(int argc, char *argv[])
       handled = pickpos.setPointSnap(argi.substr(8));
     else if(argi == "--vnames")
       handled = pickpos.setVNames();
+    else if(argi == "--colors")
+      handled = pickpos.setColors();
     else if(strBegins(argi, "--vnames="))
       handled = pickpos.setVNames(argi.substr(9));
+    else if(strBegins(argi, "--colors="))
+      handled = pickpos.setColors(argi.substr(9));
     else if(strBegins(argi, "--grps="))
       handled = pickpos.setGroups(argi.substr(7));
     else if(argi == "--hdrs") {
