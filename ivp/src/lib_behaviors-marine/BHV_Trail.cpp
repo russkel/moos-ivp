@@ -114,7 +114,7 @@ bool BHV_Trail::setParam(string param, string param_val)
     return(true);
   }
   else if(param == "speed") {
-    if(isNumber(param_val) && (dval >= 0) {
+    if(isNumber(param_val) && (dval >= 0)) {
       m_speed = dval;
       return(true);
     }

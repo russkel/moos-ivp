@@ -149,6 +149,9 @@ BehaviorSet *Populator_BehaviorSet::populate(set<string> bhv_files)
   bset->setDomain(m_domain);
   bset->setOwnship(m_ownship);
 
+  if (m_domain.size() == 0)
+    addConfigWarning("No domains configured. Behavior loading will fail.");
+
   // Inform the behavior set of the directories to look for dynamically
   // loaded behaviors specified in the moos configuration block
   
