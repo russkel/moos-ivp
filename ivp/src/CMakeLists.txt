@@ -225,6 +225,7 @@ ENDFOREACH(L)
 SET(ROBOT_APPS
   pRealm
   app_alogbin
+  app_alogavg
   app_alogtm
   app_alogeval
   app_alogload
