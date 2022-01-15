@@ -251,14 +251,12 @@ SET(ROBOT_APPS
   app_gen_moos_app
   pEchoVar
   pMissionEval
-  pEvalLoiter
   pHelmIvP
   pMarinePID
   pBasicContactMgr
   pContactMgrV20
   pDeadManPost
   pNodeReporter
-  pMovingSurvey
   pObstacleMgr
   uFldMessageHandler
   uFldNodeBroker
@@ -305,7 +303,6 @@ SET(IVP_NON_GUI_APPS
   pXRelay
   uFldCollisionDetect
   uFldCollObDetect
-  uFldLoiterAssign
   uFldPathCheck
   uFldShoreBroker
   uFldScope
@@ -314,7 +311,6 @@ SET(IVP_NON_GUI_APPS
   uFldContactRangeSensor
   uFldObstacleSim
   uFldGenericSensor
-  uFldWrapDetect
   pSearchGrid
   uSimMarine
   )
