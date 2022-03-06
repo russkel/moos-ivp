@@ -137,7 +137,6 @@ XYPolygon stringStandard2Poly(string str)
     
     if(left == "pts") {
       string pstr = biteStringX(rest, '}');
-      
       // Empty set of points is an error
       if(pstr == "")
 	return(null_poly);
@@ -166,7 +165,7 @@ XYPolygon stringStandard2Poly(string str)
 	string pstr = biteStringX(vertex, ',');
 	  
 	string property;
-	  
+	
 	if(!isNumber(xstr) || !isNumber(ystr))
 	  return(null_poly);
 	double xval = atof(xstr.c_str());

@@ -1226,7 +1226,7 @@ double XYPolygon::max_radius() const
 }
 
 //---------------------------------------------------------------
-// Procedure: closest_point_on_poly
+// Procedure: closest_point_on_poly()
 //   Purpose: Determine the point on the polygon (on an edge or 
 //            vertex) closest to the given point.
 //   Returns: true if the polygon is convex, false otherwise
@@ -1292,7 +1292,7 @@ bool XYPolygon::closest_point_on_poly(double sx, double sy,
 
 
 //---------------------------------------------------------------
-// Procedure: exportSegList
+// Procedure: exportSegList()
 //   Purpose: Build an XYSegList from the polygon. Make the first 
 //            point in the XYSegList the point in the polygon
 //            that is closest to the x,y point.
@@ -1358,5 +1358,33 @@ XYPolygon XYPolygon::crossProductSettle() const
   }
 
   return(poly);
+}
+
+//---------------------------------------------------------
+// Procedure: setRadial()
+//   Purpose: Create the vertices for a radial polygon, overwriting
+//            any previously set vertices.
+ 
+bool XYPolygon::setRadial(double xpos, double ypos, double radius,
+			  unsigned int pts, double snap)
+{
+  if(radius <= 0)
+    return(false);
+  if(pts < 3)
+    return(false);
+
+  clear();
+
+  double delta = 360 / (double)(pts);
+  for(double deg=(delta/2); deg<360; deg+=delta) {
+    double new_x, new_y;
+    projectPoint(deg, radius, xpos, ypos, new_x, new_y);
+    add_vertex(new_x, new_y, false);
+  }
+  determine_convexity();
+  if(snap >= 0)
+    apply_snap(snap);
+  
+  return(true);
 }
 
