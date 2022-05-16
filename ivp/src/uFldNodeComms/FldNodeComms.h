@@ -29,6 +29,7 @@
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 #include "NodeRecord.h"
 #include "NodeMessage.h"
+#include "AckMessage.h"
 
 class FldNodeComms : public AppCastingMOOSApp
 {
@@ -49,7 +50,8 @@ class FldNodeComms : public AppCastingMOOSApp
   void registerVariables();
   void checkForDeletableNodes();
   bool handleMailNodeReport(const std::string& str, std::string& whynot);
-  bool handleMailNodeMessage(const std::string& str);
+  bool handleMailNodeMessage(const std::string& str, const std::string& src);
+  bool handleMailAckMessage(const std::string& str);
   bool handleMailCommsRange(double);
   bool handleMailFullReportReq(std::string);
   bool handleStealth(const std::string&);
@@ -60,6 +62,8 @@ class FldNodeComms : public AppCastingMOOSApp
   void localShareNodeReportInfo(const std::string& uname);
   void distributeNodeMessageInfo(const std::string& uname);
   void distributeNodeMessageInfo(std::string src, NodeMessage msg);
+  void distributeAckMessageInfo(const std::string& uname);
+  void distributeAckMessageInfo(std::string src, AckMessage msg);
 
   
   void clearStaleNodes();
@@ -126,16 +130,24 @@ class FldNodeComms : public AppCastingMOOSApp
   std::map<std::string, double>       m_map_lshare_tstamp;     
   // Holds last node messsages received for vehicle vname
   std::map<std::string, std::vector<NodeMessage> > m_map_message;    
+  // Holds last ack messsages received for vehicle vname
+  std::map<std::string, std::vector<AckMessage> > m_map_ack_message;    
 
+  
   // True if last node report for vehicle vname has not been sent out
   std::map<std::string, bool>         m_map_newrecord;  
   // True if last node message for vehicle vname has not been sent out
   std::map<std::string, bool>         m_map_newmessage; 
+  // True if last ack message for vehicle vname has not been sent out
+  std::map<std::string, bool>         m_map_newackmessage; 
 
   // Time node report was last received for vehicle vname
   std::map<std::string, double>       m_map_time_nreport;
   // Time node message was last received for vehicle vname
   std::map<std::string, double>       m_map_time_nmessage;
+  // Time ack message was last received for vehicle vname
+  std::map<std::string, double>       m_map_time_amessage;
+
   // Unique index associated with vehicle vname
   std::map<std::string, unsigned int> m_map_vindex; 
   // Name of group if any for vehicle vname according to node reports
@@ -147,7 +159,8 @@ class FldNodeComms : public AppCastingMOOSApp
   std::string           m_full_rpt_vname;
   std::set<std::string> m_full_rpt_waiting;
   
-  std::vector<std::string> m_colors;
+  std::string m_msg_color;
+  std::string m_msg_repeat_color;
 
  protected: // State (statistics) variables
 
@@ -155,11 +168,15 @@ class FldNodeComms : public AppCastingMOOSApp
   unsigned int   m_total_reports_sent;
   unsigned int   m_total_messages_rcvd;
   unsigned int   m_total_messages_sent;
+  unsigned int   m_total_ack_messages_rcvd;
+  unsigned int   m_total_ack_messages_sent;
 
   std::map<std::string, unsigned int> m_map_reports_rcvd;
   std::map<std::string, unsigned int> m_map_reports_sent;
   std::map<std::string, unsigned int> m_map_messages_rcvd;
   std::map<std::string, unsigned int> m_map_messages_sent;
+  std::map<std::string, unsigned int> m_map_ack_messages_rcvd;
+  std::map<std::string, unsigned int> m_map_ack_messages_sent;
 
   unsigned int   m_blk_msg_invalid;
   unsigned int   m_blk_msg_toostale;
@@ -169,6 +186,8 @@ class FldNodeComms : public AppCastingMOOSApp
   unsigned int   m_blk_msg_noinfo;
   
   std::list<std::string> m_last_messages;
+
+  std::list<std::string> m_recent_ackids;
 };
 
 #endif 

@@ -66,10 +66,12 @@ NodeMessage string2NodeMessage(const string& message_string)
       string_val = value;
     else if(param == "color")
       new_message.setColor(value);
-    else if(param == "id")
+    else if(param == "ack_id")
       new_message.setMessageID(value);
     else if((param == "string_val_quoted") && (value == "true"))
       string_val_quoted = true;
+    else if((param == "ack") && (value == "true"))
+      new_message.setAckRequested(true);
     else if(param == "double_val")
       new_message.setDoubleVal(atof(value.c_str()));
   }
@@ -87,11 +89,3 @@ NodeMessage string2NodeMessage(const string& message_string)
 
   return(new_message);
 }
-
-
-
-
-
-
-
-

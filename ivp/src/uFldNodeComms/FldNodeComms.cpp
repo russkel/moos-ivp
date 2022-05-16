@@ -34,7 +34,7 @@
 using namespace std;
 
 //---------------------------------------------------------
-// Constructor
+// Constructor()
 
 FldNodeComms::FldNodeComms()
 {
@@ -65,6 +65,9 @@ FldNodeComms::FldNodeComms()
   m_verbose          = false;
   m_debug            = false;
 
+  m_msg_color = "white";
+  m_msg_repeat_color = "light_green";
+  
   m_min_share_interval = 0.1;
   
   m_pulse_duration   = 10;      // zero means no pulses posted.
@@ -79,6 +82,8 @@ FldNodeComms::FldNodeComms()
   m_total_reports_sent  = 0;
   m_total_messages_rcvd = 0;
   m_total_messages_sent = 0;
+  m_total_ack_messages_rcvd = 0;
+  m_total_ack_messages_sent = 0;
 
   m_blk_msg_invalid   = 0;
   m_blk_msg_toostale  = 0;
@@ -100,15 +105,18 @@ bool FldNodeComms::OnNewMail(MOOSMSG_LIST &NewMail)
     CMOOSMsg &msg = *p;
     string key    = msg.GetKey();
     string sval   = msg.GetString(); 
+    string msrc   = msg.GetSource(); 
     double dval   = msg.GetDouble(); 
-
+    
     bool   handled = false;
     string whynot;
 
     if((key == "NODE_REPORT") || (key == "NODE_REPORT_LOCAL")) 
       handled = handleMailNodeReport(sval, whynot);
-    else if(key == "NODE_MESSAGE") 
-      handled = handleMailNodeMessage(sval);
+    else if((key == "NODE_MESSAGE") || (key == "MEDIATED_MESSAGE"))
+      handled = handleMailNodeMessage(sval, msrc);
+    else if(key == "ACK_MESSAGE") 
+      handled = handleMailAckMessage(sval);
     else if(key == "UNC_SHARED_NODE_REPORTS") 
       handled = handleEnableSharedNodeReports(sval);
     else if(key == "UNC_STEALTH") 
@@ -149,6 +157,7 @@ bool FldNodeComms::Iterate()
 {
   AppCastingMOOSApp::Iterate();
 
+  // Part 2: Distribute Node reports
   map<string, bool>::iterator p;
   for(p=m_map_newrecord.begin(); p!=m_map_newrecord.end(); p++) {
     string uname   = p->first;    
@@ -158,6 +167,8 @@ bool FldNodeComms::Iterate()
       localShareNodeReportInfo(uname);
     }
   }
+
+  // Part 2: Distribute NodeMessages (and MediatedMessages)
   map<string, bool>::iterator p2;
   for(p2=m_map_newmessage.begin(); p2!=m_map_newmessage.end(); p2++) {
     string src_name = p2->first;    
@@ -167,9 +178,23 @@ bool FldNodeComms::Iterate()
       distributeNodeMessageInfo(src_name);
   }
 
+  // Part 3: Distribute AckMessages
+  map<string, bool>::iterator p3;
+  for(p3=m_map_newackmessage.begin(); p3!=m_map_newackmessage.end(); p3++) {
+    string src_name = p3->first;    
+    bool   newinfo  = p3->second;
+    // If the message has changed, consider sending it out
+    if(newinfo) 
+      distributeAckMessageInfo(src_name);
+  }
+
   m_map_newrecord.clear();
+
   m_map_newmessage.clear();
+  m_map_newackmessage.clear();
+
   m_map_message.clear();
+  m_map_ack_message.clear();
 
   clearStaleNodes();
 
@@ -242,6 +267,10 @@ bool FldNodeComms::OnStartUp()
       handled = handleEnableSharedNodeReports(value);
     else if(param == "ignore_group") 
       handled = setNonWhiteVarOnString(m_ignore_group, value);
+    else if(param == "msg_color") 
+      handled = setColorOnString(m_msg_color, value);
+    else if(param == "msg_repeat_color") 
+      handled = setColorOnString(m_msg_repeat_color, value);
 
     if(!handled)
       reportUnhandledConfigWarning(orig);
@@ -296,7 +325,7 @@ void FldNodeComms::clearStaleNodes()
 
 
 //------------------------------------------------------------
-// Procedure: registerVariables
+// Procedure: registerVariables()
 
 void FldNodeComms::registerVariables()
 {
@@ -305,6 +334,8 @@ void FldNodeComms::registerVariables()
   Register("NODE_REPORT", 0);
   Register("NODE_REPORT_LOCAL", 0);
   Register("NODE_MESSAGE", 0);
+  Register("MEDIATED_MESSAGE", 0);
+  Register("ACK_MESSAGE", 0);
   Register("UNC_COMMS_RANGE", 0);
   Register("UNC_STEALTH", 0);
   Register("UNC_EARANGE", 0);
@@ -314,7 +345,7 @@ void FldNodeComms::registerVariables()
 
 
 //------------------------------------------------------------
-// Procedure: handleMailNodeReport
+// Procedure: handleMailNodeReport()
 
 bool FldNodeComms::handleMailNodeReport(const string& str, string& whynot)
 {
@@ -349,24 +380,31 @@ bool FldNodeComms::handleMailNodeReport(const string& str, string& whynot)
 }
 
 //------------------------------------------------------------
-// Procedure: handleMailNodeMessage
+// Procedure: handleMailNodeMessage()
 //   Example: NODE_MESSAGE = src_node=henry,dest_node=ike,
 //                           var_name=FOO, string_val=bar   
 
-bool FldNodeComms::handleMailNodeMessage(const string& msg)
+bool FldNodeComms::handleMailNodeMessage(const string& msg,
+					 const string& msg_src)
 {
   NodeMessage new_message = string2NodeMessage(msg);
-
-  // #1 List of "last" messages store solely for user debug 
-  //    viewing at the console window.
+  
+  // Part 1: List of "last" messages store solely for user
+  // debug viewing at the console window.
   m_last_messages.push_back(msg);
   if(m_last_messages.size() > 5) 
     m_last_messages.pop_front();
 
-  // #2 Check that the message is valid
+  // Part 2: Check that the message is valid
   if(!new_message.valid())
     return(false);
 
+  // Part 3: If the source app is not named in the message,
+  // then add it here. Added Mar 30, 2022.
+  if(new_message.getSourceApp() == "")
+    new_message.setSourceApp(msg_src);
+
+  // Part 4: 
   string upp_src_node = toupper(new_message.getSourceNode());
 
   m_map_message[upp_src_node].push_back(new_message);
@@ -388,7 +426,46 @@ bool FldNodeComms::handleMailNodeMessage(const string& msg)
 }
 
 //------------------------------------------------------------
-// Procedure: handleStealth
+// Procedure: handleMailAckMessage()
+//   Example: ACK_MESSAGE = src=henry, dest=ike, id=ike_21
+
+bool FldNodeComms::handleMailAckMessage(const string& msg)
+{
+  AckMessage new_message = string2AckMessage(msg);
+
+  // #1 List of "last" messages store solely for user debug 
+  //    viewing at the console window.
+  m_last_messages.push_back(msg);
+  if(m_last_messages.size() > 5) 
+    m_last_messages.pop_front();
+
+  // #2 Check that the message is valid
+  if(!new_message.valid())
+    return(false);
+
+  string upp_src_node = toupper(new_message.getSourceNode());
+
+  m_map_ack_message[upp_src_node].push_back(new_message);
+  m_map_newackmessage[upp_src_node] = true;
+
+  unsigned int vindex_size = m_map_vindex.size();
+  if(m_map_vindex.count(upp_src_node) == 0)
+    m_map_vindex[upp_src_node] = vindex_size;
+
+  if(m_map_ack_messages_rcvd.count(upp_src_node) == 0)
+    m_map_ack_messages_rcvd[upp_src_node] = 1;
+  else
+    m_map_ack_messages_rcvd[upp_src_node]++;
+
+  m_total_ack_messages_rcvd++;
+
+  reportEvent("Msg rec'd: " + msg);
+
+  return(true);
+}
+
+//------------------------------------------------------------
+// Procedure: handleStealth()
 //   Example: vname=alpha,stealth=0.4"
 //      Note: Max value is 1.0. Min value set by m_min_stealth
 
@@ -420,7 +497,7 @@ bool FldNodeComms::handleStealth(const string& str)
   return(true);
 }
 //------------------------------------------------------------
-// Procedure: handleMailCommsRange
+// Procedure: handleMailCommsRange()
 //   Example: 300
 
 bool FldNodeComms::handleMailCommsRange(double new_range)
@@ -430,7 +507,7 @@ bool FldNodeComms::handleMailCommsRange(double new_range)
 }
 
 //------------------------------------------------------------
-// Procedure: handleEarange
+// Procedure: handleEarange()
 //   Example: vname=alpha,earange=0.5
 //      Note: Min value is 1.0. Max value set by m_max_earange
 
@@ -494,7 +571,7 @@ bool FldNodeComms::handleEnableSharedNodeReports(string str)
 
 
 //------------------------------------------------------------
-// Procedure: distributeNodeReportInfo
+// Procedure: distributeNodeReportInfo()
 //   Purpose: Post the node report for vehicle <uname> to all 
 //            other vehicles as NODE_REPORT_VNAME where <uname>
 //            is not equal to VNAME (no need to report to self).
@@ -594,7 +671,7 @@ void FldNodeComms::distributeNodeReportInfo(const string& uname)
 
 
 //------------------------------------------------------------
-// Procedure: localShareNodeReportInfo
+// Procedure: localShareNodeReportInfo()
 //   Purpose: Post the node report for vehicle <uname> to a variable 
 //            designed to be used on shoreside to feed pMarineViewer.
 //            This allows a viewing app to receive node reports only
@@ -627,7 +704,7 @@ void FldNodeComms::localShareNodeReportInfo(const string& uname)
 
 
 //------------------------------------------------------------
-// Procedure: distributeNodeMessageInfo
+// Procedure: distributeNodeMessageInfo()
 //      Note: Mod Sep 20th, 2015 (mikerb) to allow uFldNodeComms to
 //            keep all messages received since the previous Iteration.
 //            Previously messages sent together in time, and all
@@ -654,7 +731,7 @@ void FldNodeComms::distributeNodeMessageInfo(const string& src_name)
 
 
 //------------------------------------------------------------
-// Procedure: distributeNodeMessageInfo
+// Procedure: distributeNodeMessageInfo()
 //   Purpose: Post the node message for vehicle <src_name> to the  
 //            recipients specified in the message. 
 //     Notes: The recipient may be specified by the name of the recipient
@@ -680,7 +757,7 @@ void FldNodeComms::distributeNodeMessageInfo(string src_name,
     return;
   }
 
-  string msg_color = "white";
+  string msg_color = m_msg_color;
   if(message.getColor() != "")
     msg_color = message.getColor();
   
@@ -781,12 +858,119 @@ void FldNodeComms::distributeNodeMessageInfo(string src_name,
 
     if(msg_send) {
       string moos_var = "NODE_MESSAGE_" + a_dest_name;
+      if(message.getAckRequested())
+	moos_var = "MEDIATED_MESSAGE_" + a_dest_name;
+
       string node_message = message.getSpec();
       Notify(moos_var, node_message);
-      postViewCommsPulse(src_name, a_dest_name, "msg", msg_color, 0.6);
+
+      string id = message.getMessageID();
+      if((id != "") && listContains(m_recent_ackids,id))
+	postViewCommsPulse(src_name, a_dest_name, "msg", m_msg_repeat_color, 0.6);
+      else
+	postViewCommsPulse(src_name, a_dest_name, "msg", msg_color, 0.6);
+
+      if(id != "") {
+	m_recent_ackids.push_front(id);
+	if(m_recent_ackids.size() > 100)
+	  m_recent_ackids.pop_back();
+      }
+      
+
       m_total_messages_sent++;
       m_map_messages_sent[a_dest_name]++;
     }
+  }
+}
+
+
+//------------------------------------------------------------
+// Procedure: distributeAckMessageInfo()
+//      Note: Added March 2022
+
+void FldNodeComms::distributeAckMessageInfo(const string& src_name)
+{
+  if(m_map_ack_message.count(src_name) == 0)
+    return;
+
+  for(unsigned int i=0; i<m_map_ack_message[src_name].size(); i++) {
+    double elapsed = m_curr_time - m_map_time_amessage[src_name];
+    if(elapsed >= m_min_msg_interval) {
+      AckMessage message = m_map_ack_message[src_name][i];
+      distributeAckMessageInfo(src_name, message);
+      m_map_time_amessage[src_name] = m_curr_time;
+    }
+    else
+      m_blk_msg_tooquick++;
+  }
+}
+
+
+//------------------------------------------------------------
+// Procedure: distributeAckMessageInfo()
+//      Note: Added March 2022
+
+void FldNodeComms::distributeAckMessageInfo(string src_name,
+					    AckMessage message)
+{
+  // First check if the latest message for the given vehicle is valid.
+  if(!message.valid()) {
+    m_blk_msg_invalid++;
+    return;
+  }
+  
+  // Begin determining the list of destinations
+  string dest_name  = toupper(message.getDestNode());
+
+  // Begin handling all the destinations
+  bool msg_send = true;
+  
+  if(m_debug) 
+    cout << src_name << "--->" << dest_name << ": " << endl;
+  
+  // Criteria #1B: Must have node records (position info) for both vehicles
+  if(!m_map_record.count(toupper(src_name)) ||
+     !m_map_record.count(toupper(dest_name))) {
+    m_blk_msg_noinfo++;
+    msg_send = false;
+  }
+    
+  // Criteria #2: receiving vehicle has been heard from recently.
+  // Freshness is enforced to disallow messages to a vehicle that may in
+  // fact be much farther away than a stale node report would indicate
+  // 2a - check if receiving vehicle has never been heard from
+  if(msg_send && (m_map_time_nreport.count(dest_name) == 0))
+    msg_send = false;
+    
+  // 2b - receiving vehicle has not been heard from recently
+  if(msg_send) {
+    double dest_name_time_since_nreport = m_curr_time;
+    dest_name_time_since_nreport -= m_map_time_nreport[dest_name];
+    if(dest_name_time_since_nreport > m_stale_time) {
+      m_blk_msg_toostale++;
+      msg_send = false;
+    }
+  }
+    
+  // Criteria #3: the range between vehicles is not too large.
+  if(msg_send && !meetsRangeThresh(src_name, dest_name)) {
+    m_blk_msg_toofar++;
+    msg_send = false;
+  }
+
+  // Criteria #4: randomly drop messages, to probabilistically let 
+  //              all but drop percentage through
+  if(msg_send && meetsDropPercentage())
+    msg_send = false;
+  
+  if(msg_send) {
+    string moos_var = "ACK_MESSAGE_" + dest_name;
+
+    string ack_message = message.getSpec();
+    Notify(moos_var, ack_message);
+    //postViewCommsPulse(src_name, dest_name, "msg", msg_color, 0.6);
+    m_total_ack_messages_sent++;
+    m_map_ack_messages_sent[dest_name]++;
   }
 }
 
@@ -876,7 +1060,7 @@ bool FldNodeComms::handleMailFullReportReq(string vname)
 }
 
 //------------------------------------------------------------
-// Procedure: meetsReportRateThresh
+// Procedure: meetsReportRateThresh()
 //   Purpose: Determine if Vehicle2 should receive the node report
 //            of Vehicle1, given the amount of time since the last
 //            report sent from vehicle 1 to 2.
@@ -966,7 +1150,8 @@ void FldNodeComms::postViewCommsPulse(const string& uname1,
   if(m_pulse_duration <= 0)
     return;
 
-  if(pcolor == "invisible")
+  string lpcolor = tolower(pcolor);
+  if((lpcolor == "invisible") || (lpcolor == "off"))
     return;
   
   if(uname1 == uname2)
@@ -1022,7 +1207,7 @@ void FldNodeComms::postViewCommsPulse(const string& uname1,
 }
 
 //------------------------------------------------------------
-// Procedure: buildReport
+// Procedure: buildReport()
 //      Note: A virtual function of AppCastingMOOSApp superclass, conditionally 
 //            invoked if either a terminal or appcast report is needed.
 
@@ -1041,6 +1226,7 @@ bool FldNodeComms::buildReport()
   m_msgs << "   Max Message Len: " << doubleToStringX(m_max_msg_length) << endl;
   m_msgs << "   Min Message Int: " << doubleToStringX(m_min_msg_interval) << endl;
   m_msgs << "   Min Report  Int: " << doubleToStringX(m_min_rpt_interval,2) << endl;
+  m_msgs << "          Drop Pct: " << doubleToStringX(m_drop_pct,2)     << endl;
   m_msgs << "       Apply Group: " << boolToString(m_apply_groups)      << endl;
   m_msgs << "     Share Reports: " << share_rpt_string << endl;
   m_msgs << "      Ignore Group: " << m_ignore_group << endl;
@@ -1140,7 +1326,4 @@ bool FldNodeComms::buildReport()
 
   return(true);
 }
-
-
-
 

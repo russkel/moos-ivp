@@ -875,6 +875,8 @@ bool IvPBehavior::checkForDurationReset()
   bool reset_triggered = false;
   //if(m_duration_reset_val == "")
   //  reset_triggered = true;
+  if((ok_s || ok_d) && (m_duration_reset_val == ""))
+    reset_triggered = true;
   if(ok_s && (m_duration_reset_val == s_result))
     reset_triggered = true;
   if(ok_d && (atof(m_duration_reset_val.c_str()) == d_result))
@@ -983,7 +985,7 @@ bool IvPBehavior::checkNoStarve()
 
 
 //-----------------------------------------------------------
-// Procedure: checkUpdates
+// Procedure: checkUpdates()
 
 // (1) We want to be efficient and avoid applying an update string 
 //     if it hasn't change since the last application - in case some

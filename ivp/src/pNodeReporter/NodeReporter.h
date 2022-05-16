@@ -29,6 +29,7 @@
 #include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 #include "NodeRecord.h"
+#include "NodeRiderSet.h"
 
 class NodeReporter : public AppCastingMOOSApp
 {
@@ -58,6 +59,8 @@ public:
   void handleHelmSwitch();
 
   void updateNavWarning(bool ok_nav) const;
+
+  bool handleMailRiderVars(std::string, std::string, double);
   
  protected: // Configuration Variables (Node Reports)
   std::string  m_vessel_name;
@@ -66,7 +69,8 @@ public:
   double       m_nohelm_thresh;
   std::string  m_group_name;
   bool         m_terse_reports;
-
+  std::string  m_allow_color_change;
+  
  protected: // State Variables (Node Reports)
   CMOOSGeodesy m_geodesy;
   std::string  m_helm_mode;
@@ -114,14 +118,9 @@ public:
   std::vector<double>      m_plat_post_gap;
   std::vector<double>      m_plat_post_tstamp;
   std::vector<double>      m_plat_recv_tstamp;
+
+ protected: // NodeRider support
+  NodeRiderSet m_riderset;
 };
 
 #endif
-
-
-
-
-
-
-
-

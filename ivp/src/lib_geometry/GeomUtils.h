@@ -92,6 +92,7 @@ void   perpLineIntPt(double x1, double y1, double x2, double y2,
 void    projectPoint(double ANGLE, double DIST, double cx, 
 		     double cy,    double& rx,  double &ry);
 XYPoint projectPoint(double ANGLE, double DIST, double cx, double cy);
+XYPoint projectPoint(double ANGLE, double DIST, XYPoint pt);
 
 XYPoint midPoint(const XYPoint& pt1, const XYPoint& pt2);
 
@@ -171,7 +172,7 @@ double distToPoint(double x1, double y1, double x2, double y2);
 
 double distToSegment(double x1, double y1, double x2, 
 		     double y2, double px, double py);
-  
+
 #endif
 
 

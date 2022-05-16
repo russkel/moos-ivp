@@ -28,6 +28,7 @@
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 #include "PMV_GUI.h"
 #include "Threadsafe_pipe.h"
+#include "ExFilterSet.h"
 #include "MOOS_event.h"
 
 class PMV_MOOSApp : public AppCastingMOOSApp  
@@ -72,15 +73,21 @@ class PMV_MOOSApp : public AppCastingMOOSApp
 
   void handlePendingPostsFromGUI();
   void handlePendingCommandSummary();
-  
+
+  void postFlags(const std::vector<VarDataPair>&);
+
  protected:
   Threadsafe_pipe<MOOS_event> *m_pending_moos_events;
 
   PMV_GUI     *m_gui;
-  double       m_lastredraw_time;
+  double       m_last_redraw_time;
+  double       m_last_beat_time;
+  double       m_last_updatexy_time;
   bool         m_verbose;
   bool         m_pending_pairs;
 
+  ExFilterSet  m_filter_set;
+  
   std::vector<std::string>  m_node_report_vars;
   std::vector<std::string>  m_scope_vars;
   std::vector<VarDataPair>  m_connection_pairs; 
@@ -107,6 +114,7 @@ class PMV_MOOSApp : public AppCastingMOOSApp
 
   std::string  m_region_info;
 
+  std::vector<VarDataPair> m_beat_flags;  
 };
 
 #endif 

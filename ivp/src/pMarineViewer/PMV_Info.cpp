@@ -166,12 +166,18 @@ void showExampleConfigAndExit()
   blk("  realmcast_trunc_content      = false // {true,FALSE}          ");
   blk("  realmcast_time_format_utc    = false // {true,FALSE}          ");
   blk("                                                                ");
+  blk("  watch_cluster key=mission_top, vars=DEPLOY:RETURN:COVER       ");
+  blk("                                                                ");
   blk("  // Context Pull-Down Menu ====================================");
   blk("  left_context[survey-point] = SURVEY_UPDATES = points =        ");
   blk("         vname=$(VNAME), x=$(XPOS), y=$(YPOS), format=lawnmower,");
   blk("         label=delta, width=70, height=30, lane_width=8,        ");
   blk("         rows=north-south, degs=80                              ");
   blk("  left_context[survey-point] = SURVEY = true                    ");
+  blk("                                                                ");
+  blk("  // Exclusion Filter ========================================= ");
+  blk("  ignore_name = abe                                             ");
+  blk("  match_name = ben,cal                                          ");
   blk("                                                                ");
   blk("  // MOOS-Scope Pull-Down Menu ================================ ");
   blk("  scope = SURVEY_UPDATES                                        ");
@@ -186,7 +192,7 @@ void showExampleConfigAndExit()
   blk("                                                                ");
   blk("  // Button Configurations                                      ");
   blk("  button_one   = DEPLOY # DEPLOY=true                           ");
-  blk("  button_one   = MOOS_MANUAL_OVERIDE=false # RETURN=false       ");
+  blk("  button_one   = MOOS_MANUAL_OVERRIDE=false # RETURN=false      ");
   blk("  button_two   = RETURN # RETURN=true                           ");
   blk("  button_three = SURVEY-true # SURVEY=true                      ");
   blk("  button_four  = SURVEY-false # SURVEY=false                    ");
@@ -195,6 +201,10 @@ void showExampleConfigAndExit()
   blk("                                                                ");
   blk("  // Node Report Source                                         ");
   blk("  node_report_unc = true       {true, FALSE}                    ");
+  blk("                                                                ");
+  blk("  app_logging = true  // {true or file} By default disabled     ");
+  blk("                                                                ");
+  blk("  beat_flag = HEARTBEAT=true                                    ");
   blk("}                                                               ");
   blk("                                                                ");
   exit(0);

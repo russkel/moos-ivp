@@ -81,7 +81,7 @@ std::string toupper(const std::string&);
 std::string truncString(const std::string&, unsigned int newlen, 
 			std::string="");
 std::string boolToString(bool);
-std::string uintToString(unsigned int);
+std::string uintToString(unsigned int, unsigned int padlen=0);
 std::string ulintToString(unsigned long int);
 std::string intToString(int);
 std::string intToCommaString(int);
@@ -123,9 +123,9 @@ bool  tokParse(const std::string&, const std::string&,
 		char, char, bool&);
 
 std::string tokStringParse(const std::string&, const std::string&, 
-			   char, char);
+			   char gsep=',', char lsep='=');
 double tokDoubleParse(const std::string&, const std::string&, 
-		      char, char);
+		      char gsep=',', char lsep='=');
 
 double minElement(const std::vector<double>&);
 double maxElement(const std::vector<double>&);

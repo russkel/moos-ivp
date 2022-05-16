@@ -74,6 +74,8 @@ NodeReporter::NodeReporter()
 
   m_crossfill_policy = "literal";
 
+  m_allow_color_change = false;
+  
   // Timestamps used for executing the "use-latest" crossfill policy 
   m_nav_xy_updated        = 0;
   m_nav_latlon_updated    = 0;
@@ -85,7 +87,7 @@ NodeReporter::NodeReporter()
   m_node_report_var = "NODE_REPORT_LOCAL";
   m_plat_report_var = "PLATFORM_REPORT_LOCAL";
 
-  m_nav_grace_period = 25; // seconds, -1 means no grace period
+  m_nav_grace_period = 60; // seconds, -1 means no grace period
   m_nav_warning_posted = false;
 }
 
@@ -103,7 +105,8 @@ bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
     string key   = msg.GetKey();
     string sdata = msg.GetString();
     double ddata = msg.GetDouble();
-
+    string msrc  = msg.GetSource();
+    
     if(key == "NAV_X") {
       m_record.setX(ddata);
       m_nav_xy_updated = m_curr_time;
@@ -126,12 +129,18 @@ bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
       m_record.setHeading(angle360(ddata));
     else if(key == "NAV_DEPTH")
       m_record.setDepth(ddata);
+    else if(key == "NAV_ALTITUDE")
+      m_record.setAltitude(ddata);
     else if(key == "NAV_YAW") 
       m_record.setYaw(ddata);
     else if(key == "NAV_TRAJECTORY")
       m_record.setTrajectory(sdata);
     else if(key == "PLATFORM_COLOR") {
       if(isColor(sdata))
+	m_record.setColor(sdata);
+    }
+    else if((key == "NODE_COLOR_CHANGE") && isColor(sdata)) {
+      if((msrc == m_allow_color_change) || (m_allow_color_change == "true"))
 	m_record.setColor(sdata);
     }
     else if(key == "THRUST_MODE_REVERSE") {
@@ -167,6 +176,8 @@ bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
 	m_record_gt.setHeading(angle360(ddata));
       else if(key == (m_alt_nav_prefix + "DEPTH"))
 	m_record_gt.setDepth(ddata);
+      else if(key == (m_alt_nav_prefix + "ALTITUDE"))
+	m_record_gt.setAltitude(ddata);
       else if(key == (m_alt_nav_prefix + "YAW"))
 	m_record_gt.setYaw(ddata);
       else 
@@ -195,8 +206,8 @@ bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
       m_record.setGroup(sdata);
       m_record_gt.setGroup(sdata);
     }
-
-  else if(key == "IVPHELM_SUMMARY") {
+    
+    else if(key == "IVPHELM_SUMMARY") {
       m_helm_lastmsg = m_curr_time;
       handleLocalHelmSummary(sdata);
     }
@@ -223,6 +234,8 @@ bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
       if(strBegins(helm_status, "MALCONFIG"))
 	m_helm_allstop_mode = "n/a";
     }
+    else
+      handleMailRiderVars(key, sdata, ddata);
 
     if(vectorContains(m_plat_vars, key)) {
       string value = sdata;
@@ -277,6 +290,7 @@ void NodeReporter::registerVariables()
     Register(m_alt_nav_prefix + "TRANSP", 0);
   }  
 
+  Register("NODE_COLOR_CHANGE");
   Register("IVPHELM_SUMMARY", 0);
   Register("IVPHELM_STATE", 0);
   Register("IVPHELM_ALLSTOP", 0);
@@ -287,6 +301,10 @@ void NodeReporter::registerVariables()
   Register("NODE_GROUP_UPDATE", 0);
   Register("PNR_PAUSE", 0);
   Register("PLATFORM_COLOR", 0);
+
+  vector<string> rider_vars = m_riderset.getVars();
+  for(unsigned int i=0; i<rider_vars.size(); i++) 
+    Register(rider_vars[i], 0);
 }
 
 //-----------------------------------------------------------------
@@ -347,6 +365,12 @@ bool NodeReporter::OnStartUp()
       m_record.setTransparency(atof(value.c_str()));
       handled = true;
     }
+
+    else if(param == "allow_color_change") 
+      handled = setNonWhiteVarOnString(m_allow_color_change, value);
+
+    else if(param == "rider") 
+      handled = m_riderset.addNodeRider(value);
 
     else if(param == "terse_reports") 
       handled = setBooleanOnString(m_terse_reports, value);
@@ -709,6 +733,11 @@ string NodeReporter::assembleNodeReport(NodeRecord record)
   record.setAllStop(m_helm_allstop_mode);
 
   string summary = record.getSpec(m_terse_reports);
+
+  string rider_reports = m_riderset.getRiderReports(m_curr_time);
+  if(rider_reports != "")
+    summary += "," + rider_reports;
+
   return(summary);
 }
 
@@ -730,7 +759,6 @@ bool NodeReporter::setCrossFillPolicy(string policy)
   
   return(false);
 }
-
 
 
 //------------------------------------------------------------------
@@ -838,6 +866,21 @@ void NodeReporter::handleHelmSwitch()
 }
 
 
+//------------------------------------------------------------------
+// Procedure: handleMailRiderVars()
+
+bool NodeReporter::handleMailRiderVars(string var, string sval,
+				       double dval)
+{
+  string update_str = sval;
+  if(sval == "")
+    update_str = doubleToStringX(dval, 4);
+
+  bool ok = m_riderset.updateRider(var, update_str, m_curr_time);
+  return(ok);
+}
+
+
 //-----------------------------------------------------------------
 // Procedure: buildReport()
 //      Note: A virtual function of the AppCastingMOOSApp superclass, 
@@ -903,6 +946,17 @@ bool NodeReporter::buildReport()
   m_msgs << "    alt_nav_group: " << m_alt_nav_group    << endl;
   m_msgs << " alt_nav_postings: " << m_reports_posted_alt_nav << endl;
   m_msgs << endl;
+
+  vector<string> rider_specs = m_riderset.getRiderSpecs();
+  if(rider_specs.size() != 0) {
+    m_msgs << "Riders:                     " << endl;
+    m_msgs << "----------------------------" << endl;
+    for(unsigned int i=0; i<rider_specs.size(); i++)
+      m_msgs << "  " << rider_specs[i] << endl;
+    m_msgs << endl;
+  }
+  
+  
   m_msgs << "Node Report Summary:"                 << endl;
   m_msgs << "----------------------------"         << endl;
   m_msgs << "Reports Posted: " << m_reports_posted << endl;

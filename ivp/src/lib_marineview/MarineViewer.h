@@ -41,6 +41,7 @@
 #include "XYSegList.h"
 #include "XYSeglr.h"
 #include "XYCircle.h"
+#include "XYOval.h"
 #include "XYArrow.h"
 #include "XYHexagon.h"
 #include "XYRangePulse.h"
@@ -141,11 +142,17 @@ protected:
   void  drawGrids(const std::vector<XYGrid>&);
   void  drawGrid(const XYGrid&);
 
-  void  drawConvexGrids(const std::vector<XYConvexGrid>&);
-  void  drawConvexGrid(const XYConvexGrid&);
+  //void  drawConvexGrids(const std::vector<XYConvexGrid>&);
+  //void  drawConvexGrid(const XYConvexGrid&);
+
+  void  drawConvexGrids(std::vector<XYConvexGrid>);
+  void  drawConvexGrid(XYConvexGrid);
 
   void  drawCircles(const std::map<std::string, XYCircle>&, double timestamp=0);
   void  drawCircle(XYCircle, double timestamp=0);
+
+  void  drawOvals(const std::map<std::string, XYOval>&, double timestamp=0);
+  void  drawOval(XYOval, double timestamp=0);
 
   void  drawArrows(const std::map<std::string, XYArrow>&, double timestamp=0);
   void  drawArrow(XYArrow, double timestamp=0);

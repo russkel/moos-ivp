@@ -51,28 +51,25 @@ CMD_ARGS+=" "$J_ARGS
 #  If this is Raspbian and minrobot not selected, and
 #  no explicit override given with -mx, CONFIRM first
 #-------------------------------------------------------------- 
-if [ -x "$(command -v lsb_release)" ]; then
-    OS=`lsb_release -i -s`
-    if [ "${OS}" = "Raspbian" -a "${BUILD_BOT_CODE_ONLY}" = "OFF" ]; then
-	if [ ! "${FORCE_FULL_RASPI_BUILD}" = "yes" ]; then
-	    echo "Raspbian detected without --minrobotx or -mx selected."
-	    echo "[y] Continue with full build"
-	    echo "[M] Continue with minrobot build"
-	    echo -n "Continue? [y/M] "
-	    read ANSWER
-	    if [ ! "${ANSWER}" = "y" ]; then
-		BUILD_BOT_CODE_ONLY="ON"
-	    fi
+command -v raspi-gpio
+if [ "$?" = "0" -a "${BUILD_BOT_CODE_ONLY}" = "OFF" ]; then
+    if [ ! "${FORCE_FULL_RASPI_BUILD}" = "yes" ]; then
+	echo "Pi OS detected without --minrobotx or -mx selected."
+	echo "[y] Continue with full build"
+	echo "[M] Continue with minrobot build"
+	echo -n "Continue? [y/M] "
+	read ANSWER
+	if [ ! "${ANSWER}" = "y" ]; then
+	    BUILD_BOT_CODE_ONLY="ON"
 	fi
     fi
 fi
-	
 
 echo "  SCRIPT_ABS_DIR: " ${SCRIPT_ABS_DIR}
 
 # Setup C and C++ Compiler flags for Mac and Linux. 
 MOOS_CXX_FLAGS="-Wall -Wextra -Wno-unused-parameter -pedantic -fPIC "
-MOOS_CXX_FLAGS="-Wno-c++11-extensions"
+MOOS_CXX_FLAGS="-Wno-c++11-extensions -Wno-deprecated-declarations "
 
 if [ "${BUILD_OPTIM}" = "yes" ] ; then
     MOOS_CXX_FLAGS=$MOOS_CXX_FLAGS" -Os"
