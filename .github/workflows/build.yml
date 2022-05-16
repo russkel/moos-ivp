@@ -9,19 +9,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
       with:
         languages: cpp
 
+    - uses: dsaltares/fetch-gh-release-asset@master
+      with:
+        repo: 'russkel/core-moos'
+        version: 'latest'
+        file: '^moos-core-.*\.deb$'
+        regex: true
+        target: '${{ github.workspace }}/deps/'
+
+    - uses: dsaltares/fetch-gh-release-asset@master
+      with:
+        repo: 'russkel/geodesy-moos'
+        version: 'latest'
+        file: '^MOOSGeodesy-.*\.deb$'
+        regex: true
+        target: '${{ github.workspace }}/deps/'
+
     - name: Install moos and deps
       run: |
-        mkdir deps && cd deps
-        wget https://github.com/russkel/core-moos/releases/download/latest/MOOS-10.5.0-focal-x86_64.deb
-        wget https://github.com/russkel/geodesy-moos/releases/download/latest/MOOSGeodesy-10.5.0-focal-x86_64.deb
-        cd ..
         sudo apt-get install ./deps/*.deb
         sudo apt-get install libfltk1.3-dev
 
