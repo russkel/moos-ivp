@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v1
+      uses: github/codeql-action/init@v2
       with:
         languages: cpp
 
@@ -39,24 +39,21 @@ jobs:
 
     - name: Cache Build
       id: cache-build
-      uses: actions/cache@v1
+      uses: actions/cache@v3
       with:
         path: build
         key: ${{ runner.os }}-${{ github.sha }}
 
-    - name: cmake
+    - name: cmake and build
       if: steps.cache-build.outputs.cache-hit != 'true'
       run: |
         mkdir -p build && cd build
         cmake -DCMAKE_BUILD_TYPE=Release ../ivp/src
-
-    - name: make
-      if: steps.cache-build.outputs.cache-hit != 'true'
-      run: cd build && make
+        make
 
     - name: Perform CodeQL Analysis
       if: steps.cache-build.outputs.cache-hit != 'true'
-      uses: github/codeql-action/analyze@v1
+      uses: github/codeql-action/analyze@v2
 
     - name: package
       run: |
@@ -66,7 +63,7 @@ jobs:
         dpkg -I artifacts/*.deb
         dpkg --contents artifacts/*.deb
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: deb
         path: build/artifacts
@@ -76,14 +73,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download deb from build
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v3
       with:
         name: deb
+        path: deb
 
     - name: Get File Name
       id: get_filename
       run: |
-        cd deb
         echo "::set-output name=short_sha::`echo ${GITHUB_SHA} | cut -c1-8`"
 
     - name: Create Release
