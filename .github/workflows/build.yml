@@ -7,12 +7,23 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, ubuntu-18.04]
+    runs-on: ${{ matrix.os }}
+
     steps:
     - uses: actions/checkout@v3
 
+    - name: Get ubuntu release name
+      id: get_release_name
+      run: |
+        echo "::set-output name=release_name::`lsb_release -cs`"
+
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
+      if: matrix.os == 'ubuntu-20.04'
       with:
         languages: cpp
 
@@ -20,7 +31,7 @@ jobs:
       with:
         repo: 'russkel/core-moos'
         version: 'latest'
-        file: '^moos-core-.*\.deb$'
+        file: '^moos-core-.*-${{ steps.get_release_name.outputs.release_name }}-x86_64\.deb$'
         regex: true
         target: '${{ github.workspace }}/deps/'
 
@@ -28,7 +39,7 @@ jobs:
       with:
         repo: 'russkel/geodesy-moos'
         version: 'latest'
-        file: '^MOOSGeodesy-.*\.deb$'
+        file: '^MOOSGeodesy-.*-${{ steps.get_release_name.outputs.release_name }}-x86_64\.deb$'
         regex: true
         target: '${{ github.workspace }}/deps/'
 
@@ -42,7 +53,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: build
-        key: ${{ runner.os }}-${{ github.sha }}
+        key: ${{ runner.os }}-${{ steps.get_release_name.outputs.release_name }}-${{ github.sha }}
 
     - name: cmake and build
       if: steps.cache-build.outputs.cache-hit != 'true'
@@ -52,7 +63,7 @@ jobs:
         make
 
     - name: Perform CodeQL Analysis
-      if: steps.cache-build.outputs.cache-hit != 'true'
+      if: steps.cache-build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-20.04'
       uses: github/codeql-action/analyze@v2
 
     - name: package
