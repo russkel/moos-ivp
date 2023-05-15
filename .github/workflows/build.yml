@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04, ubuntu-18.04]
+        os: [ubuntu-22.04, ubuntu-20.04]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -23,7 +23,7 @@ jobs:
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
-      if: matrix.os == 'ubuntu-20.04'
+      if: matrix.os == 'ubuntu-22.04'
       with:
         languages: cpp
 
@@ -63,7 +63,7 @@ jobs:
         make
 
     - name: Perform CodeQL Analysis
-      if: steps.cache-build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-20.04'
+      if: steps.cache-build.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-22.04'
       uses: github/codeql-action/analyze@v2
 
     - name: package

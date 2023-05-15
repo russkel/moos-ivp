@@ -315,7 +315,7 @@ bool HelmIvP::OnNewMail(MOOSMSG_LIST &NewMail)
   // level. The current state of the comms policy is a member variable
   // of this class (superclass). Pass along this value to the
   // info_buffer.
-  m_info_buffer->setValue("COMMS_POLICY", commsPolicy(), m_curr_time);
+  // m_info_buffer->setValue("COMMS_POLICY", commsPolicy(), m_curr_time);
   
   if(helmStatus() == "STANDBY")
     checkForTakeOver();
