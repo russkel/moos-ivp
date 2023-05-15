@@ -87,7 +87,7 @@ BasicContactMgr::BasicContactMgr()
   m_alert_requests_received = 0;
 
   // This app is deprecated. Suggest an alternative
-  m_deprecated_alt = "pContactMgrV20";
+  // m_deprecated_alt = "pContactMgrV20";
 }
 
 //---------------------------------------------------------
