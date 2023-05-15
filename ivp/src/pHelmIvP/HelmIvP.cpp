@@ -671,7 +671,7 @@ bool HelmIvP::buildReport()
     return(true);
   }
 
-  m_msgs << "  Comms Policy: " << commsPolicy()  << endl; 
+  // m_msgs << "  Comms Policy: " << commsPolicy()  << endl; 
 
   list<string> summary = m_helm_report.formattedSummary(m_curr_time);
   list<string>::iterator p;
