@@ -29,6 +29,7 @@
 #include "MBUtils.h"
 #include "AngleUtils.h"
 #include "NodeRecord.h"
+#include "NodeRecordUtils.h"
 #include "ACBlock.h"
 
 // As of Release 15.4 this is now set in CMake, defaulting to be defined
@@ -37,7 +38,7 @@
 using namespace std;
 
 //-----------------------------------------------------------------
-// Constructor
+// Constructor()
 
 NodeReporter::NodeReporter()
 {
@@ -74,7 +75,7 @@ NodeReporter::NodeReporter()
 
   m_crossfill_policy = "literal";
 
-  m_allow_color_change = false;
+  m_allow_color_change = "false";
   
   // Timestamps used for executing the "use-latest" crossfill policy 
   m_nav_xy_updated        = 0;
@@ -89,10 +90,20 @@ NodeReporter::NodeReporter()
 
   m_nav_grace_period = 60; // seconds, -1 means no grace period
   m_nav_warning_posted = false;
+
+  // Sep 01, 2022
+  m_extrap_enabled    = false;
+  m_extrap_pos_thresh = 0.25; // meters
+  m_extrap_hdg_thresh = 1;    // degrees
+  m_extrap_max_gap    = 5;    // seconds
+  
+  // Nov 12, 2022
+  m_max_extent = 0;
+  m_max_extent_prev = 0;
 }
 
 //-----------------------------------------------------------------
-// Procedure: OnNewMail
+// Procedure: OnNewMail()
 
 bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
 {
@@ -188,6 +199,12 @@ bool NodeReporter::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     // END logic for checking for alternative nav reporting
     
+    if(key == "MISSION_HASH") {
+      m_curr_mhash = tokStringParse(sdata, "mhash");
+      m_max_extent = 0;
+      m_odometer.resetExtent();
+    }
+      
     if(key == "AUX_MODE") 
       m_record.setModeAux(sdata);
 
@@ -301,6 +318,7 @@ void NodeReporter::registerVariables()
   Register("NODE_GROUP_UPDATE", 0);
   Register("PNR_PAUSE", 0);
   Register("PLATFORM_COLOR", 0);
+  Register("MISSION_HASH", 0);
 
   vector<string> rider_vars = m_riderset.getVars();
   for(unsigned int i=0; i<rider_vars.size(); i++) 
@@ -309,7 +327,6 @@ void NodeReporter::registerVariables()
 
 //-----------------------------------------------------------------
 // Procedure: OnStartUp()
-//      Note: Happens before connection is open
 
 bool NodeReporter::OnStartUp()
 {
@@ -427,6 +444,15 @@ bool NodeReporter::OnStartUp()
     else if(param =="nav_grace_period") 
       handled = setDoubleOnString(m_nav_grace_period, value);
     
+    else if(param =="extrap_enabled") 
+      handled = setBooleanOnString(m_extrap_enabled, value);    
+    else if(param =="extrap_pos_thresh") 
+      handled = setNonNegDoubleOnString(m_extrap_pos_thresh, value);
+    else if(param =="extrap_hdg_thresh") 
+      handled = setNonNegDoubleOnString(m_extrap_hdg_thresh, value);
+    else if(param =="extrap_max_gap") 
+      handled = setNonNegDoubleOnString(m_extrap_max_gap, value);
+    
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
@@ -453,9 +479,11 @@ bool NodeReporter::OnStartUp()
       m_record.setLength(3); // meters
     else if(vtype == "usv")
       m_record.setLength(6); // meters
-    else if(vtype == "kingfisher")
+    else if(vtype == "heron")
       m_record.setLength(3); // meters
     else if(vtype == "swimmer")
+      m_record.setLength(3); // meters
+    else if(vtype == "buoy")
       m_record.setLength(3); // meters
     else
       reportConfigWarning("Unrecognized platform type: " + vtype);
@@ -500,7 +528,9 @@ bool NodeReporter::Iterate()
   if((m_curr_time - m_last_post_time) > m_blackout_interval)
     time_to_post = true;
 
+  //==============================================================
   // Part 2: Determine if posting is ok based on NAV criteria
+  //==============================================================
   bool ok_nav_to_post = false;
   if(m_record.valid()) // name, speed, heading, x/y, or lat/lon
     ok_nav_to_post = true;
@@ -509,8 +539,11 @@ bool NodeReporter::Iterate()
     if((m_nav_grace_period > 0) && (elapsed_since_start > m_nav_grace_period))
       ok_nav_to_post = true;
   }
+  m_record.setTimeStamp(m_curr_time); 
 
+  //==============================================================
   // Part 3: Post or retract run warning about Nav if needed
+  //==============================================================
   if(!ok_nav_to_post && !m_nav_warning_posted) {
     reportRunWarning("Waiting for NAV_X/Y or NAV_LAT/LONG");
     m_nav_warning_posted = true;
@@ -519,9 +552,50 @@ bool NodeReporter::Iterate()
     retractRunWarning("Waiting for NAV_X/Y or NAV_LAT/LONG");
     m_nav_warning_posted = false;
   }
-        
-  // Part 4: Post NodeReport if both TIME and NAV criteria ok  
-  if(time_to_post && ok_nav_to_post) {
+
+  //==============================================================
+  // Part 4: Determine Extroplation Discrepancy if needed
+  //==============================================================
+
+  bool   pruned_due_to_extrap = false;
+  double delta_time = 0;
+  if(m_record_last_posted.getTimeStamp() > 0) 
+    delta_time = m_curr_time - m_record_last_posted.getTimeStamp();
+
+  cout << "delta_time:" << doubleToStringX(delta_time,2) << endl;
+  
+  if(m_extrap_enabled && (delta_time > 0)) {
+    if(delta_time < m_extrap_max_gap) {
+      NodeRecord extrap_record = extrapolateRecord(m_record_last_posted,
+						   m_curr_time, 5);
+      double dist = rangeBetweenRecords(m_record, extrap_record);
+
+      double hdg1 = m_record.getHeading();
+      double hdg2 = extrap_record.getHeading();
+      double hdg_delta = angleDiff(hdg1, hdg2);
+      
+      cout << "m_record:" << m_record.getSpec(true) << endl;
+      cout << "extrap_record:" << extrap_record.getSpec(true) << endl;
+      cout << "dist:" << dist << endl;
+      cout << "hdg_delta:" << hdg_delta << endl;
+      
+      if((dist < m_extrap_pos_thresh) && (hdg_delta < m_extrap_hdg_thresh))
+	pruned_due_to_extrap = true;
+      Notify("PNR_EXTRAP_POS_GAP", dist);
+      Notify("PNR_EXTRAP_HDG_GAP", hdg_delta);
+    }
+  }
+
+  bool post_report = false;
+  if(ok_nav_to_post && time_to_post) {
+    if(!pruned_due_to_extrap)
+      post_report = true;
+  }
+  
+  //==============================================================
+  // Part 5: Post NodeReport if conditions met
+  //==============================================================
+  if(post_report) {
     if(m_crossfill_policy != "literal")
       crossFillCoords(m_record, m_nav_xy_updated, m_nav_latlon_updated);
     
@@ -532,7 +606,10 @@ bool NodeReporter::Iterate()
       if(m_reports_posted == 0) 
 	Notify(m_node_report_var+"_FIRST", report);
       Notify(m_node_report_var, report);
+      Notify("PNR_POST_GAP", delta_time);
       m_reports_posted++;
+      cout << "Posted:" << m_record.getSpec(true) << endl;
+      m_record_last_posted = m_record;
     }
 
     double elapsed_time = m_curr_time - m_record_gt_updated;
@@ -565,10 +642,20 @@ bool NodeReporter::Iterate()
       m_blackout_interval = 0;
   }
 
+  // Update the last_posted record
+  // m_record_last_posted = m_record;
+  
+  //==============================================================
   // Part 5: Handle the Platform Report
+  //==============================================================
   string platform_report = assemblePlatformReport();
   if((platform_report != "") && !m_paused)
     Notify(m_plat_report_var, platform_report);
+
+  //==============================================================
+  // Part 6: Update the MHash Odometry if enabled
+  //==============================================================
+  updateMHashOdo();
   
   m_record.setLoadWarning("");
   AppCastingMOOSApp::PostReport();
@@ -881,6 +968,46 @@ bool NodeReporter::handleMailRiderVars(string var, string sval,
 }
 
 
+//------------------------------------------------------------------
+// Procedure: updateMHashOdo()
+
+void NodeReporter::updateMHashOdo()
+{
+  // Sanity check: If no mission hash has been received ever, then
+  // we're not doing this at all.
+  if(m_curr_mhash == "")
+    return;
+  
+  
+  // Part 1: Update Odometer distance/extent with new nav position
+  double navx = m_record.getX();
+  double navy = m_record.getY();
+  m_odometer.updateDistance(navx, navy);
+
+  double max_extent = m_odometer.getMaxExtent();
+
+  if(max_extent > m_max_extent)
+    m_max_extent = max_extent;
+
+  bool post_update = false;
+  if((m_max_extent_prev == 0) && (m_max_extent > 0))
+    post_update = true;
+  else if(m_max_extent > (m_max_extent_prev * 1.02))
+    post_update = true;
+
+  if((m_max_extent - m_max_extent_prev) < 1)
+    post_update = false;
+
+  
+  if(post_update) {
+    m_max_extent_prev = m_max_extent;
+    string msg = "mhash=" + m_curr_mhash;
+    msg += ",ext=" + doubleToStringX(m_max_extent,1);
+    Notify("PNR_MHASH", msg);    
+  }
+}
+
+
 //-----------------------------------------------------------------
 // Procedure: buildReport()
 //      Note: A virtual function of the AppCastingMOOSApp superclass, 
@@ -917,10 +1044,19 @@ bool NodeReporter::handleMailRiderVars(string var, string sval,
 
 bool NodeReporter::buildReport()
 {
+  m_msgs << "tr_interval:" << m_term_report_interval << endl;
+
   string str_vlength  = doubleToString(m_record.getLength(),1);
   string str_blackout = doubleToString(m_blackout_interval,2);
   string str_bovariance = doubleToString(m_blackout_variance,2);
+  string str_ex_pos_thresh = doubleToStringX(m_extrap_pos_thresh,2);
+  string str_ex_hdg_thresh = doubleToStringX(m_extrap_hdg_thresh,2);
+  string str_ex_max_gap = doubleToStringX(m_extrap_max_gap,2);
 
+  m_msgs << "extrap_enabled:    " << boolToString(m_extrap_enabled) << endl; 
+  m_msgs << "extrap_pos_thresh: " << str_ex_pos_thresh << endl; 
+  m_msgs << "extrap_hdg_thresh: " << str_ex_hdg_thresh << endl; 
+  m_msgs << "extrap_max_gap:    " << str_ex_pos_thresh << endl; 
   m_msgs << "Paused: " << boolToString(m_paused) << endl; 
   m_msgs << "Vehicle Configuration:"                    << endl;
   m_msgs << "----------------------------"              << endl;

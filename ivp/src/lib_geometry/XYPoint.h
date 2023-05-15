@@ -32,9 +32,11 @@
 class XYPoint : public XYObject {
  public:
   XYPoint()
-    {m_x=0; m_y=0; m_z=0; m_valid=false; m_sdigits=2;}
-  XYPoint(double x, double y)
-    {m_x=x; m_y=y; m_z=0; m_valid=true; m_sdigits=2;}
+  {m_x=0; m_y=0; m_z=0; m_valid=false; m_sdigits=2; m_pt_trans=0;}
+  XYPoint(double x, double y, double z=0)
+  {m_x=x; m_y=y; m_z=z; m_valid=true; m_sdigits=2; m_pt_trans=0;}
+  XYPoint(double x, double y, std::string l)
+  {m_x=x; m_y=y; m_z=0; m_valid=true; m_sdigits=2; m_pt_trans=0; m_label=l;}
 
   virtual ~XYPoint() {}
   
@@ -46,8 +48,10 @@ class XYPoint : public XYObject {
   void set_vx(double v)       {m_x=v;}
   void set_vy(double v)       {m_y=v;}
   void set_vz(double v)       {m_z=v;}
-
+  void set_pt_trans(double);
+  
   void set_spec_digits(unsigned int v);
+  void invalidate() {m_valid=false;}
   
 public:
   void   shift_x(double val) {m_x += val;}
@@ -59,6 +63,7 @@ public:
   double    get_vx() const          {return(m_x);}
   double    get_vy() const          {return(m_y);}
   double    get_vz() const          {return(m_z);}
+  double    get_pt_trans() const    {return(m_pt_trans);}
   double    x() const               {return(m_x);}
   double    y() const               {return(m_y);}
   double    z() const               {return(m_z);}
@@ -75,15 +80,7 @@ protected:
   double    m_z;
   bool      m_valid;
   int       m_sdigits;
+  double    m_pt_trans;
 };
 
 #endif
-
-
-
-
-
-
-
-
-

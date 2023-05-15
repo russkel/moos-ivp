@@ -43,6 +43,7 @@ class PickPos
   
   bool   setMultiLine()          {m_multiline=true; return(true);}
   bool   setPickAmt(std::string);
+  bool   setVNameStartIX(std::string);
   bool   setBufferDist(std::string);
   bool   setMaxTries(std::string);
   bool   setOutputType(std::string);
@@ -55,7 +56,8 @@ class PickPos
   bool   setSpdConfig(std::string);
   bool   setGroups(std::string);
   bool   setVNames(std::string);
-  bool   setVNames() {m_vnames=true; return(true);}
+  bool   setVNames();
+  bool   setIndices()  {m_indices=true; return(true);}
   bool   setColors(std::string);
   bool   setColors() {m_colors=true; return(true);}
 
@@ -65,16 +67,22 @@ class PickPos
 
   void   setArgSummary(std::string str)  {m_arg_summary=str;}
 
+  bool   setVNameCacheOne();
+  bool   setVNameCacheTwo();
+  bool   setVNameCacheThree();
+  bool   setVNameCacheFour();
+
+ public:
   bool   pick();
 
  protected:
-  void setVNameCache();
   void setColorCache();
   void pickPosByFile();
   void pickPosByPoly();
   bool pickPosByCircle(double minsep=-1);
   void pickHeadingVals();
   void pickSpeedVals();
+  void pickIndices();
   void pickGroupNames();
   void pickVehicleNames();
   void pickColors();
@@ -99,8 +107,10 @@ class PickPos
   double       m_spd_val1;
   double       m_spd_val2;
 
+  unsigned int m_vname_start_ix;
   bool         m_vnames;
   bool         m_colors;
+  bool         m_indices;
 
   bool         m_reverse_names;
   
@@ -138,6 +148,7 @@ protected: // State variables
   std::vector<std::string>  m_pick_vnames;
   std::vector<std::string>  m_pick_groups;
   std::vector<std::string>  m_pick_colors;
+  std::vector<int>          m_pick_indices;
 
   // Nearest neighbor for each chosen position
   std::vector<double>       m_near_positions;

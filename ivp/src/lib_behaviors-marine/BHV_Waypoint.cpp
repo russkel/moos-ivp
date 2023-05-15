@@ -33,7 +33,6 @@
 #include "GeomUtils.h"
 #include "BuildUtils.h"
 #include "PathUtils.h"
-#include "FunctionEncoder.h"
 #include "ZAIC_PEAK.h"
 #include "ZAIC_SPD.h"
 #include "OF_Coupler.h"
@@ -73,16 +72,15 @@ BHV_Waypoint::BHV_Waypoint(IvPDomain gdomain) :
   m_use_alt_speed   = false;
 
   // Visual Hint Defaults
-  m_hint_active        = true;
-  m_hint_vertex_size   = 3;
-  m_hint_edge_size     = 1;
-  m_hint_vertex_color  = "dodger_blue";
-  m_hint_edge_color    = "white";
-  m_hint_label_color   = "white";
-  m_hint_nextpt_color  = "yellow";
-  m_hint_nextpt_lcolor = "aqua";
-  m_hint_nextpt_vertex_size = 5;
-  
+  m_hints.setMeasure("vertex_size", 3);
+  m_hints.setMeasure("edge_size", 1);
+  m_hints.setColor("vertex_color", "dodger_blue");
+  m_hints.setColor("edge_color", "white");
+  m_hints.setColor("label_color", "white");
+  m_hints.setColor("nextpt_color", "yellow");
+  m_hints.setColor("nextpt_label_color", "aqua");
+  m_hints.setMeasure("nextpt_vertex_size", 5);
+
   m_lead_to_start     = false;
 
   // The completed and perpetual vars are initialized in superclass
@@ -100,6 +98,10 @@ BHV_Waypoint::BHV_Waypoint(IvPDomain gdomain) :
 
   m_wpt_flag_published = false;
   
+  // false is existing behavior of later PI updates, and true ties
+  // PX,PI,PI together
+  m_eager_prev_index_flag = false; 
+
   m_dist_leg_odo = 0;
   m_dist_total_odo    = 0;
   m_dist_total_linear = 0;
@@ -129,15 +131,21 @@ BHV_Waypoint::BHV_Waypoint(IvPDomain gdomain) :
 void BHV_Waypoint::onSetParamComplete()
 {
   m_trackpt.set_label(m_us_name + "'s track-point");
-  m_trackpt.set_vertex_size(4);
-  m_trackpt.set_color("label", m_hint_nextpt_color);
-  m_trackpt.set_color("vertex", m_hint_nextpt_color);
-  
   m_nextpt.set_label(m_us_name + "'s next waypoint");
-  m_nextpt.set_vertex_size(m_hint_nextpt_vertex_size);
-  m_nextpt.set_color("vertex", m_hint_nextpt_color);
-  m_nextpt.set_color("label", m_hint_nextpt_lcolor);
 
+  applyHints(m_trackpt, m_hints, "nextpt");
+  applyHints(m_nextpt, m_hints, "nextpt");
+
+#if 0
+  m_trackpt.set_vertex_size(4);
+  m_trackpt.set_color("label", m_hints.getColor("nextpt_color"));
+  m_trackpt.set_color("vertex", m_hints.getColor("nextpt_color"));
+  
+  m_nextpt.set_vertex_size(m_hints.getMeasure("nextpt_vertex_size"));
+  m_nextpt.set_color("vertex", m_hints.getColor("nextpt_color"));
+  m_nextpt.set_color("label", m_hints.getColor("nextpt_label_color"));
+#endif
+  
   // Get the lead_condition variables and register for them
   vector<string> svector;
   for(unsigned i=0; i<m_lead_conditions.size(); i++)
@@ -187,7 +195,8 @@ bool BHV_Waypoint::setParam(string param, string param_val)
     m_markpt.set_active(false);
     m_prev_cycle_index = 0;
     m_prev_waypt_index = -1;
-
+    m_prevpt.invalidate();
+    
     // After the waypoint engine is updated with new points, if the 
     // xpoints option is used, we also restore the current index,
     // prev_waypt_ix and cycle_ix.
@@ -323,6 +332,8 @@ bool BHV_Waypoint::setParam(string param, string param_val)
   }
   else if(param == "wptflag_on_start")
     return(setBooleanOnString(m_wpt_flag_on_start, param_val));
+  else if(param == "eager_prev_index_flag")
+    return(setBooleanOnString(m_eager_prev_index_flag, param_val));
   else if(param == "lead_to_start")
     return(setBooleanOnString(m_lead_to_start, param_val));
   else if((param == "lead_damper") && (dval > 0)) {
@@ -412,13 +423,9 @@ bool BHV_Waypoint::setParam(string param, string param_val)
     return(true);
   }
 
-  else if(param == "visual_hints")  {
-    vector<string> svector = parseStringQ(param_val, ',');
-    unsigned int i, vsize = svector.size();
-    for(i=0; i<vsize; i++) 
-      handleVisualHint(svector[i]);
-    return(true);
-  }
+  else if(param == "visual_hints")  
+    return(m_hints.setHints(param_val));
+
   return(false);
 }
 
@@ -490,6 +497,7 @@ IvPFunction *BHV_Waypoint::onRunState()
   // Note the waypoint prior to possibly incrementing the waypoint
   double this_x = m_waypoint_engine.getPointX();
   double this_y = m_waypoint_engine.getPointY();
+  int    this_i = m_waypoint_engine.getCurrIndex();
   if(!m_prevpt.valid())
     m_prevpt.set_vertex(m_osx, m_osy);
 
@@ -512,7 +520,8 @@ IvPFunction *BHV_Waypoint::onRunState()
 
   if(post_wpt_flags) {
     m_prevpt.set_vertex(this_x, this_y);
-    m_prev_waypt_index = m_waypoint_engine.getCurrIndex(); // moved 5/15/22 from below
+    if(m_eager_prev_index_flag)
+      m_prev_waypt_index = this_i;
     postFlags(m_wpt_flags);
     m_wpt_flag_published = true;
   }
@@ -531,7 +540,8 @@ IvPFunction *BHV_Waypoint::onRunState()
   // Only publish these reports if we have another point to go.
   if(next_point) {
     postStatusReport();
-    // m_prev_waypt_index = m_waypoint_engine.getCurrIndex(); // disabled 5/15/22 to above
+    if(!m_eager_prev_index_flag)
+      m_prev_waypt_index = m_waypoint_engine.getCurrIndex();
     postViewableSegList();
     //postMessage("VIEW_POINT", m_prevpt.get_spec("active=true"), "prevpt");
     postMessage("VIEW_POINT", m_nextpt.get_spec("active=true"), "wpt");
@@ -540,14 +550,14 @@ IvPFunction *BHV_Waypoint::onRunState()
     // If the trackpoint and next waypoint differ by more than five
     // meters then post a visual cue for the track point.
     if(dist > 5)
-      postMessage("VIEW_POINT", m_trackpt.get_spec("active=true"), "trk");
+      postMessage("VIEW_POINT", m_trackpt.get_spec_inactive(), "trk");
     else
-      postMessage("VIEW_POINT", m_trackpt.get_spec("active=false"), "trk");
+      postMessage("VIEW_POINT", m_trackpt.get_spec_inactive(), "trk");
     
   }
   // Otherwise "erase" the next waypoint marker
   else {
-    postMessage("VIEW_POINT", m_nextpt.get_spec("active=false"), "wpt");
+    postMessage("VIEW_POINT", m_nextpt.get_spec_inactive(), "wpt");
     return(0);
   }
   
@@ -844,7 +854,6 @@ void BHV_Waypoint::postStatusReport()
   }
 }
 
-
 //-----------------------------------------------------------
 // Procedure: postViewableSegList()
 //      Note: Recall that for a seglist to be drawn and erased, 
@@ -855,17 +864,32 @@ void BHV_Waypoint::postViewableSegList()
 {
   XYSegList seglist = m_waypoint_engine.getSegList();
   seglist.set_label(m_us_name + "_" + m_descriptor);
-  if(m_hint_vertex_color != "")
-    seglist.set_color("vertex", m_hint_vertex_color);
-  if(m_hint_edge_color != "")
-    seglist.set_color("edge", m_hint_edge_color);
-  if(m_hint_label_color != "")
-    seglist.set_color("label", m_hint_label_color);
-  if(m_hint_edge_size >= 0)
-    seglist.set_edge_size(m_hint_edge_size);
-  if(m_hint_vertex_size >= 0)
-    seglist.set_vertex_size(m_hint_vertex_size);
-  seglist.set_active(m_hint_active);
+
+  applyHints(seglist, m_hints);
+  
+  string segl_color = m_hints.getColor("edge_color");
+  if((segl_color == "off") || (segl_color == "inactive")) {
+    postMessage("VIEW_SEGLIST", seglist.get_spec_inactive());
+    return;
+  }
+
+#if 0  
+  if(m_hints.hasColor("vertex_color"))
+    seglist.set_color("vertex", m_hints.getColor("vertex_color"));
+
+  if(m_hints.hasColor("edge_color"))
+    seglist.set_color("edge", m_hints.getColor("edge_color"));
+  
+  if(m_hints.hasColor("label_color"))
+    seglist.set_color("label", m_hints.getColor("label_color"));
+  
+  if(m_hints.hasMeasure("edge_size"))
+    seglist.set_edge_size(m_hints.getMeasure("edge_size"));
+  
+  if(m_hints.hasMeasure("vertex_size"))
+    seglist.set_vertex_size(m_hints.getMeasure("vertex_size"));
+#endif
+  
   string segmsg = seglist.get_spec();
   postMessage("VIEW_SEGLIST", segmsg);
 }
@@ -878,8 +902,8 @@ void BHV_Waypoint::postViewableSegList()
 
 void BHV_Waypoint::postErasables()
 {
-  postMessage("VIEW_POINT", m_trackpt.get_spec("active=false"), "trk");
-  postMessage("VIEW_POINT", m_nextpt.get_spec("active=false"), "wpt");
+  postMessage("VIEW_POINT", m_trackpt.get_spec_inactive(), "trk");
+  postMessage("VIEW_POINT", m_nextpt.get_spec_inactive(), "wpt");
 
   XYSegList seglist = m_waypoint_engine.getSegList();
   seglist.set_label(m_us_name + "_" + m_descriptor);
@@ -927,35 +951,6 @@ void BHV_Waypoint::postWptFlags(double x, double y)
 }
 #endif
 
-
-//-----------------------------------------------------------
-// Procedure: handleVisualHint()
-
-void BHV_Waypoint::handleVisualHint(string hint)
-{
-  string param = tolower(stripBlankEnds(biteString(hint, '=')));
-  string value = stripBlankEnds(hint);
-  double dval  = atof(value.c_str());
-
-  if((param == "vertex_size") && isNumber(value) && (dval >= 0))
-    m_hint_vertex_size = dval;
-  else if((param == "edge_size") && isNumber(value) && (dval >= 0))
-    m_hint_edge_size = dval;
-  else if((param == "vertex_color") && isColor(value))
-    m_hint_vertex_color = value;
-  else if((param == "edge_color") && isColor(value))
-    m_hint_edge_color = value;
-  else if((param == "label_color") && isColor(value))
-    m_hint_label_color = value;
-  else if(param == "active")
-    setBooleanOnString(m_hint_active, value);
-  else if((param == "nextpt_color") && isColor(value)) 
-    m_hint_nextpt_color = value;
-  else if((param == "nextpt_lcolor") && isColor(value)) 
-    m_hint_nextpt_lcolor = value;
-  else if((param == "nextpt_vertex_size") && isNumber(value) && (dval >=0))
-    m_hint_nextpt_vertex_size = dval;
-}
 
 //-----------------------------------------------------------
 // Procedure: checkLeadConditions()

@@ -36,6 +36,8 @@ class LogViewLauncher
   
   REPLAY_GUI *launch(int argc, char **argv);
 
+  void setVerbose() {m_verbose=true; m_dbroker.setVerbose();}
+  
 protected:
   bool parseCommandArgs(int argc, char **argv);
   bool sanityCheck();
@@ -58,12 +60,14 @@ protected:
   bool handleZoom(std::string);
   bool handleNowTime(std::string);
   bool handleGrep(std::string);
-
+  bool handleMaxFilePtrs(std::string);
+  
   bool handleALogViewConfig(std::string);
   bool handleBehaviorVarMapping(std::string);
 
  private:
   std::vector<std::string> m_alog_files;
+  std::vector<std::string> m_tiff_files;
   
   std::string  m_tiff_file;
   std::string  m_alt_nav_prefix;
@@ -100,7 +104,3 @@ protected:
 };
 
 #endif 
-
-
-
-

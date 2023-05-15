@@ -73,6 +73,7 @@ std::string biteString(std::string&, char, char);
 std::string rbiteString(std::string&, char);
 std::string rbiteStringX(std::string&, char);
 
+std::string nibbleString(std::string&, std::string);
 
 std::string stripBlankEnds(const std::string&);
 std::string stripBlankEnd(const std::string&);
@@ -148,6 +149,7 @@ int   validateArgs(int, char **, std::string);
 double snapToStep(double, double v=1.0);
 double snapDownToStep(double, double v=1.0);
 
+bool  setPortStarOnString(std::string& val, std::string str, bool=true);
 bool  setPortTurnOnString(bool& boolval, std::string str, bool=true);
 bool  setBooleanOnString(bool& boolval, std::string str, bool=true);
 bool  setDoubleOnString(double& dval, std::string str);
@@ -157,12 +159,15 @@ bool  setIntOnString(int& int_val, std::string str);
 bool  setPosDoubleOnString(double& dval, std::string str);
 bool  setNonNegDoubleOnString(double& dval, std::string str);
 bool  setNonWhiteVarOnString(std::string& svar, std::string str);
+bool  setStatusVarOnString(std::string& svar, std::string str);
 bool  setMinPartOfPairOnString(double& minval, double& maxval,
 			       std::string str, bool negok=false);
 bool  setMaxPartOfPairOnString(double& minval, double& maxval,
 			       std::string str, bool negok=false);
 bool  setDoubleRngOnString(double& dval, std::string str,
 			   double minv, double maxv);
+bool  setDoubleClipRngOnString(double& dval, std::string str,
+			       double minv, double maxv);
 bool  setDoubleStrictRngOnString(double& dval, std::string str,
 				 double minv, double maxv);
 
@@ -203,5 +208,7 @@ std::string stringVectorToString(std::vector<std::string>, char sep_char=',');
 std::string uintVectorToString(std::vector<unsigned int>, char sep_char=',');
 
 std::string intToMonth(int, bool brief=false);
+
+bool isValidTurn(const std::string&);
 
 #endif

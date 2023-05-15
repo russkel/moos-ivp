@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
       showReleaseInfo("alogrep", "gpl");
       return(0);
     }
-    else if((argi == "--no_comments") || (argi == "-nc"))
+    else if((argi == "--n o_comments") || (argi == "-nc"))
       handler.setCommentsRetained(false);
     else if((argi == "--keep_bad") || (argi == "-kb"))
       handler.setBadLinesRetained(false);
@@ -69,6 +69,8 @@ int main(int argc, char *argv[])
       handler.setRemoveDups(true);
     }
 
+    else if(argi == "--kk")
+      handler.setKeepKey(true);
     else if((argi == "--csw") || (argi == "-csw"))
       handler.setColSep(' ');
     else if((argi == "--csc") || (argi == "-csc"))
@@ -80,17 +82,25 @@ int main(int argc, char *argv[])
 
     else if((argi == "--v") || (argi == "-vo")) 
       handler.setFormat("val");
+    else if((argi == "--s") || (argi == "-so")) 
+      handler.setFormat("src");
     else if((argi == "--tv") || (argi == "-tvo"))
       handler.setFormat("time:val");
     else if(argi == "--tvv")
       handler.setFormat("time:var:val");
 
-    else if(strBegins(argi, "--subpat=")) 
-      handler.setSubPattern(argi.substr(9));
+    else if(strBegins(argi, "--subpat=")) {
+      string patterns = argi.substr(9);
+      vector<string> svector = parseString(patterns, ':');
+      for(unsigned int i=0; i<svector.size(); i++)
+	handler.addSubPattern(svector[i]);
+    }
     else if(strBegins(argi, "--format=")) 
       handled = handler.setFormat(argi.substr(9));
     else if(argi == "--final") 
       handler.setFinalOnly(true);
+    else if(argi == "--first") 
+      handler.setFirstOnly(true);
 
 
     else if((argi == "--quiet") || (argi == "-q")) {
@@ -188,6 +198,10 @@ void showHelpAndExit()
   cout << "  --format=time:var:val or --tvv                           " << endl;
   cout << "    Output only time, variable, and value columns          " << endl;
   cout << "                                                           " << endl;
+  cout << "  --format=time:var:src                                    " << endl;
+  cout << "    Output only time, variable, and source columns         " << endl;
+  cout << "                                                           " << endl;
+  cout << "  --first           Output only first matching line        " << endl;
   cout << "  --final           Output only final matching line        " << endl;
   cout << "  --csw,-csw        Columns separated with white space     " << endl;
   cout << "  --csc,-csc        Columns separated with a comma         " << endl;
@@ -195,9 +209,17 @@ void showHelpAndExit()
   cout << "  --csc,-csc        Columns separated with a semi-colon    " << endl;
   cout << "                    (Default separator is white space )    " << endl;
   cout << "                                                           " << endl;
-  cout << "  --subpat=pattern                                         " << endl;
+  cout << "  --subpat=pattern[:pattern:pattern]                       " << endl;
   cout << "    For postings with components with comma-separated      " << endl;
-  cout << "    param=value components, a component can be isolated.   " << endl;
+  cout << "    param=value components, one or more components can be  " << endl;
+  cout << "    isolated. Typically used with --v, --format=val        " << endl;
+  cout << "                                                           " << endl;
+  cout << "  --keep-key, --kk                                         " << endl;
+  cout << "    When --subpat is used, this option will keep the key   " << endl;
+  cout << "    used in the sub-pattern. For example if the value of   " << endl;
+  cout << "    the posting is \"x=23, y=42, z=7\" and --subpat=y:z    " << endl;
+  cout << "    the result would be \"42 7\". With --kk it would be    " << endl;
+  cout << "    \"y=42, z=7\"                                          " << endl;
   cout << "                                                           " << endl;
   cout << "Further Notes:                                             " << endl;
   cout << "  (1) The second alog is the output file. Otherwise the    " << endl;

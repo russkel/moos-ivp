@@ -83,9 +83,11 @@ class PMV_MOOSApp : public AppCastingMOOSApp
   double       m_last_redraw_time;
   double       m_last_beat_time;
   double       m_last_updatexy_time;
+  double       m_last_mhash_time;
   bool         m_verbose;
   bool         m_pending_pairs;
-
+  bool         m_block_heartbeat;
+  
   ExFilterSet  m_filter_set;
   
   std::vector<std::string>  m_node_report_vars;
@@ -113,7 +115,9 @@ class PMV_MOOSApp : public AppCastingMOOSApp
   unsigned int m_button_clicks;
 
   std::string  m_region_info;
-
+  std::string  m_mission_hash;
+  std::string  m_mission_hash_var;
+  
   std::vector<VarDataPair> m_beat_flags;  
 };
 

@@ -23,6 +23,7 @@
 
 #include "CollisionDetector.h"
 #include "XYRangePulse.h"
+#include "XYCircle.h"
 #include "MBUtils.h"
 #include "LogicUtils.h"
 #include "ACTable.h"
@@ -30,7 +31,7 @@
 using namespace std;
 
 //---------------------------------------------------------
-// Constructor
+// Constructor()
 
 CollisionDetector::CollisionDetector()
 {
@@ -43,6 +44,9 @@ CollisionDetector::CollisionDetector()
   m_pulse_duration = 10;
   m_pulse_range = 20;
 
+  // By default encounter rings are rendered
+  m_encounter_rings = true;
+  
   // state variables -- counters of collision types
   m_total_collisions  = 0;
   m_total_near_misses = 0;
@@ -54,7 +58,7 @@ CollisionDetector::CollisionDetector()
   m_post_closest_range_ever = false;
 
   m_report_all_encounters = false;
-  
+
   m_info_buffer = new InfoBuffer;
 }
 
@@ -122,13 +126,39 @@ bool CollisionDetector::Iterate()
   }
 
   m_cpa_monitor.clear();
-
+  if(m_encounter_rings)
+    postRings();
+  
   AppCastingMOOSApp::PostReport();
   return(true);
 }
 
 //---------------------------------------------------------
-// Procedure: handleCPAEvent
+// Procedure: postRings()
+
+void CollisionDetector::postRings()
+{
+  set<string> vnames = m_cpa_monitor.getVNames();
+  
+  set<string>::iterator p;
+  for(p=vnames.begin(); p!=vnames.end(); p++) {
+    string vname = *p;
+    NodeRecord record = m_cpa_monitor.getVRecord(vname);
+    if(record.valid() && (vname != "badguy")) {
+      double x = record.getX();
+      double y = record.getY();
+      XYCircle circle(x,y,m_encounter_dist);
+      circle.set_edge_color("white");
+      circle.set_label(vname + "rng");
+      circle.set_color("label", "off");
+      string spec = circle.get_spec();
+      Notify("VIEW_CIRCLE", spec);
+    }
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: handleCPAEvent()
 
 void CollisionDetector::handleCPAEvent(CPAEvent event)
 {
@@ -251,7 +281,6 @@ void CollisionDetector::handleCPAEvent(CPAEvent event)
 
 //---------------------------------------------------------
 // Procedure: OnStartUp()
-//            happens before connection is open
 
 bool CollisionDetector::OnStartUp()
 {
@@ -278,6 +307,8 @@ bool CollisionDetector::OnStartUp()
       handled = setNonNegDoubleOnString(m_encounter_dist, value);
     else if(param == "pulse_render") 
       handled = setBooleanOnString(m_pulse_render, value);
+    else if(param == "encounter_rings") 
+      handled = setBooleanOnString(m_encounter_rings, value);
     else if(param == "pulse_range") 
       handled = setNonNegDoubleOnString(m_pulse_range, value);
     else if(param == "pulse_duration") 
@@ -305,6 +336,7 @@ bool CollisionDetector::OnStartUp()
 	m_logic_conditions.push_back(new_condition);
       m_conditions_ok = false; // Assume false until shown otherwise
     }
+
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
@@ -335,7 +367,7 @@ bool CollisionDetector::OnStartUp()
 }
 
 //---------------------------------------------------------
-// Procedure: registerVariables
+// Procedure: registerVariables()
 
 void CollisionDetector::registerVariables()
 {

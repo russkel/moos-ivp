@@ -42,7 +42,7 @@ XYObject::XYObject()
   m_edge_size    = -1;
   m_transparency = 0;
   m_duration     = -1;
-
+  
   m_time_set         = false;
   m_transparency_set = false;
   m_duration_set     = false;
@@ -105,6 +105,21 @@ ColorPack XYObject::get_color(const string& key) const
 }
 
 //---------------------------------------------------------------
+// Procedure: get_color()
+
+string XYObject::get_color_str(const string& key) const
+{
+  ColorPack return_cpack;
+
+  map<string, ColorPack>::const_iterator p;
+  p = m_color_map.find(key);
+  if(p != m_color_map.end())
+    return_cpack = p->second;
+
+  return(return_cpack.str());
+}
+
+//---------------------------------------------------------------
 // Procedure: color_set()
 
 bool XYObject::color_set(const string& key) const
@@ -157,6 +172,16 @@ void XYObject::set_duration(double duration)
   
   m_duration = duration;
   m_duration_set = true;
+}
+
+//---------------------------------------------------------------
+// Procedure: set_vertex_color_size()
+//   Purpose: Convenience function
+
+void XYObject::set_vertex_color_size(string vcolor, double vsize)
+{
+  set_vertex_color(vcolor);
+  set_vertex_size(vsize);
 }
 
 //---------------------------------------------------------------

@@ -33,6 +33,7 @@
 class XYSegment : public XYObject {
 public:
   XYSegment();
+  XYSegment(double x1, double y1, double x2, double y2);
   virtual ~XYSegment() {}
 
   // XYSegList create and edit functions
@@ -46,6 +47,8 @@ public:
   void   apply_snap(double snapval);
   void   reverse();
 
+  bool   intersects(XYSegment);
+  
 public:
   double length() const {return(m_length);}
   double get_x1() const {return(m_x1);}

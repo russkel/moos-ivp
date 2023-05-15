@@ -3,7 +3,11 @@
 # Author(s):                                Mike Benjamin
 #--------------------------------------------------------
 
-FILE(GLOB SRC *.cpp)
+SET(SRC
+  main.cpp
+  NodeBroker.cpp
+  NodeBroker_Info.cpp
+)
 
 ADD_EXECUTABLE(uFldNodeBroker ${SRC})
 

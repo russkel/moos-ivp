@@ -29,11 +29,12 @@
 #include "ColorParse.h"
 #include "NodeRecord.h"
 #include "NodeRecordUtils.h"
+#include "LinearExtrapolator.h"
 
 using namespace std;
 
 //-------------------------------------------------------------
-// Constructor
+// Constructor()
 
 VehicleSet::VehicleSet()
 {
@@ -47,7 +48,7 @@ VehicleSet::VehicleSet()
 }
 
 //-------------------------------------------------------------
-// Procedure: setParam
+// Procedure: setParam()
 //     Ntoes: The "handled" variable is set to true if a known and 
 //            acceptable value are passed. This Boolean is returned 
 //            and may be vital to the caller to either pass a warning
@@ -92,7 +93,7 @@ bool VehicleSet::setParam(string param, string value)
 
 
 //-------------------------------------------------------------
-// Procedure: setParam
+// Procedure: setParam()
 //     Ntoes: The "handled" variable is set to true if a known
 //            and acceptable value are passed. This boolean is 
 //            returned and may be vital to the caller to either
@@ -134,7 +135,7 @@ void VehicleSet::clear(const string& vname)
 }
 
 // ----------------------------------------------------------
-// Procedure: getNodeRecord
+// Procedure: getNodeRecord()
 
 NodeRecord VehicleSet::getNodeRecord(const string& vname) const
 {
@@ -161,6 +162,7 @@ bool VehicleSet::getDoubleInfo(const string& g_vname,
   string vname = g_vname;  
   if(vname == "active")
     vname = m_vehicles_active_name;
+
   else if(vname == "center_vehicle")
     vname = m_vehicles_center_name;
 
@@ -176,6 +178,27 @@ bool VehicleSet::getDoubleInfo(const string& g_vname,
   else
     return(false);
 
+  // If x/y position is being queried, extrapolate the position
+  if((info_type == "xpos") || (info_type == "meters_x") ||
+     (info_type == "ypos") || (info_type == "meters_y")) {
+    LinearExtrapolator extrapolator;
+    extrapolator.setPosition(record.getX(), record.getY(),
+			     record.getSpeed(), record.getHeading(),
+			     record.getTimeStamp());
+
+    double new_x, new_y;
+    bool ok = extrapolator.getPosition(new_x, new_y, m_curr_time);
+
+    if(ok && ((info_type == "xpos") || (info_type == "meters_x"))) {
+      result = new_x;
+      return(true);
+    }
+    if(ok && ((info_type == "ypos") || (info_type == "meters_y"))) {
+      result = new_y;
+      return(true);
+    }
+  }
+    
   double node_local_time = 0;
   map<string,double>::const_iterator q = m_map_node_local_time.find(vname);
   if(q != m_map_node_local_time.end())
@@ -203,11 +226,12 @@ bool VehicleSet::getDoubleInfo(const string& g_vname,
     result = m_curr_time;
   else
     return(false);
+
   return(true);
 }
 
 // ----------------------------------------------------------
-// Procedure: getStringInfo
+// Procedure: getStringInfo()
 //   Purpose: Return the string info associated with the given
 //            vehicle name and info_type. The result is placed
 //            in the given string reference, and a boolean is 
@@ -246,7 +270,7 @@ bool VehicleSet::getStringInfo(const string& g_vname,
 }
 
 // ----------------------------------------------------------
-// Procedure: getStringInfo
+// Procedure: getStringInfo()
 //   Purpose: Return the string info associated with the given
 //            vehicle name and info_type. This is a convenience
 //            function when the caller does not care to check
@@ -264,7 +288,7 @@ string VehicleSet::getStringInfo(const string& vname,
 }
 
 // ----------------------------------------------------------
-// Procedure: getDoubleInfo
+// Procedure: getDoubleInfo()
 //   Purpose: Return the numerical (double) info associated with
 //            the given vehicle name and info_type. This is a 
 //            convenience function when the caller does not care
@@ -282,7 +306,7 @@ double VehicleSet::getDoubleInfo(const string& vname,
 }
 
 // ----------------------------------------------------------
-// Procedure: getStringInfo
+// Procedure: getStringInfo()
 //   Purpose: Return the string info associated with the "active"
 //            vehicle and info_type. This is a convenience
 //            function when the caller does not care to check
@@ -488,7 +512,7 @@ bool VehicleSet::handleNodeReport(double local_time,
     vtype = "glider";
   else if((vtype != "auv") && (vtype != "glider") && (vtype != "wamv") &&
 	  (vtype != "kayak") && (vtype != "mokai") && (vtype != "heron") &&
-	  (vtype != "longship") && (vtype != "swimmer"))
+	  (vtype != "buoy") && (vtype != "longship") && (vtype != "swimmer"))
     vtype = "ship";
   
   if(((vtype == "auv") || (vtype == "glider")) && !new_record.valid("depth")) {

@@ -62,7 +62,7 @@ void XYArrow::init()
   XYObject::set_edge_color("off");
   XYObject::set_vertex_color("off");
   XYObject::set_color("fill", "yellow");
-  XYObject::set_transparency(0.2);
+  XYObject::set_transparency(0.5);
   
   m_ctr_x = 0;
   m_ctr_y = 0;
@@ -227,6 +227,41 @@ bool XYArrow::setHeadLen(double head_len)
 
   m_cache_set = false;
   return(true);
+}
+
+//-------------------------------------------------------------
+// Procedure: resize()
+
+bool XYArrow::resize(double factor)
+{
+  if(factor <= 0.01)
+    return(false);
+  
+  m_base_wid *= factor;
+  m_base_len *= factor;
+  m_head_wid *= factor;
+  m_head_len *= factor;
+
+  m_cache_set = false;
+  return(true);
+}
+
+//-------------------------------------------------------------
+// Procedure: modCenterX()
+
+void XYArrow::modCenterX(double delta)
+{
+  m_ctr_x += delta;
+  m_cache_set = false;
+}
+
+//-------------------------------------------------------------
+// Procedure: modCenterY()
+
+void XYArrow::modCenterY(double delta)
+{
+  m_ctr_y += delta;
+  m_cache_set = false;
 }
 
 //-------------------------------------------------------------

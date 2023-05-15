@@ -33,12 +33,15 @@
 using namespace std;
 
 //---------------------------------------------------------
-// Constructor
+// Constructor()
 
 ShoreBroker::ShoreBroker()
 {
   // Initialize config variables
   m_warning_on_stale = false;
+
+  m_prev_node_count = 0;
+  m_prev_node_count_tstamp = 0;
 
   // Initialize state variables
   m_iteration_last_ack = 0;
@@ -47,6 +50,9 @@ ShoreBroker::ShoreBroker()
   m_phis_received     = 0;  // Times PHI_HOST_INFO       received
   m_acks_posted       = 0;  // Times NODE_BROKER_ACK     posted
   m_pshare_cmd_posted = 0;  // Times PSHARE_CMD_REGISTER posted
+
+  m_last_pshare_vnodes = 0;
+  m_last_posting_vnodes = 0;
 }
 
 //---------------------------------------------------------
@@ -106,7 +112,9 @@ bool ShoreBroker::Iterate()
   makeBridgeRequestAll();
   sendAcks();
   checkForStaleNodes();
-
+  postNodeCount();
+  postTryVNodes();
+  
   AppCastingMOOSApp::PostReport();
   return(true);
 }
@@ -127,6 +135,7 @@ bool ShoreBroker::OnStartUp()
 
   bool auto_bridge_realmcast = true;
   bool auto_bridge_appcast = true;
+  bool auto_bridge_mhash = true;
   
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) {
@@ -148,6 +157,8 @@ bool ShoreBroker::OnStartUp()
       handled = setBooleanOnString(auto_bridge_appcast, value);
     else if(param == "warning_on_stale") 
       handled = setBooleanOnString(m_warning_on_stale, value);
+    else if(param == "try_vnode") 
+      handled = handleConfigTryVNode(value);
     else
       handled = false;
 
@@ -161,7 +172,10 @@ bool ShoreBroker::OnStartUp()
     handleConfigQBridge("REALMCAST_REQ");
   if(auto_bridge_appcast)
     handleConfigQBridge("APPCAST_REQ");
+  if(auto_bridge_mhash)
+    handleConfigBridge("src=MISSION_HASH");
   
+  postQBridgeSet();
   registerVariables();
   return(true);
 }
@@ -206,7 +220,98 @@ void ShoreBroker::sendAcks()
 }
 
 //------------------------------------------------------------
-// Procedure: checkForStaleNodes
+// Procedure: postNodeCount()
+
+void ShoreBroker::postNodeCount()
+{
+  bool post_now = false;
+
+  unsigned int node_cnt_now = m_node_host_records.size();
+  if(node_cnt_now != m_prev_node_count)
+    post_now = true;
+  
+  if((m_curr_time - m_prev_node_count_tstamp) > 30)
+    post_now = true;
+
+  if(!post_now)
+    return;
+
+  Notify("UFSB_NODE_COUNT", node_cnt_now);
+  m_prev_node_count = node_cnt_now;
+  m_prev_node_count_tstamp = m_curr_time;
+
+}
+
+//------------------------------------------------------------
+// Procedure: postTryVNodes()
+
+void ShoreBroker::postTryVNodes()
+{
+  // Part 1: Every ~30 secs (re)post the PSHARE_CMD needed to
+  // get the message to the nodes.
+  double elapsed_pshare = m_curr_time - m_last_pshare_vnodes;
+  if(elapsed_pshare > 30) {
+    m_last_pshare_vnodes = m_curr_time;
+    for(unsigned int i=0; i<m_try_vnodes.size(); i++) {
+      string pshare_post = "cmd=output";
+      pshare_post += ",src_name=TRY_SHORE_HOST";
+      pshare_post += ",dest_name=TRY_SHORE_HOST";
+      pshare_post += ",route=" + m_try_vnodes[i];
+      Notify("PSHARE_CMD", pshare_post);
+    }
+  }
+  
+  // Part 2: Every ~10 secs Post the TRY_SHORE_HOST msgs out
+  // to the vehicle nodes (vnodes).
+  double elapsed_posting = m_curr_time - m_last_posting_vnodes;
+  if(elapsed_posting > 10) {
+    m_last_posting_vnodes = m_curr_time;
+    for(unsigned int i=0; i<m_try_vnodes.size(); i++) {
+      string ip = m_shore_host_record.getHostIP();
+      string port = m_shore_host_record.getPortUDP();
+      if((ip != "") && (port != "")) {
+	string post = "pshare_route=" + ip + ":" + port;
+	Notify("TRY_SHORE_HOST", post);
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------
+// Procedure: postQBridgeSet()
+
+void ShoreBroker::postQBridgeSet()
+{
+  string msg;
+  set<string>::iterator p;
+  for(p=m_set_qbridge_vars.begin(); p!=m_set_qbridge_vars.end(); p++) {
+    string var = *p;
+    if(msg != "")
+      msg += ",";
+    msg += var;
+  }
+  Notify("UFSB_QBRIDGE_VARS", msg);
+}
+
+//------------------------------------------------------------
+// Procedure: postBridgeSet()
+
+void ShoreBroker::postBridgeSet()
+{
+  string msg;
+  set<string>::iterator p;
+  for(p=m_set_bridge_vars.begin(); p!=m_set_bridge_vars.end(); p++) {
+    string var = *p;
+    if(msg != "")
+      msg += ",";
+    msg += var;
+  }
+  if(msg != "")
+    Notify("UFSB_BRIDGE_VARS", msg);
+}
+
+//------------------------------------------------------------
+// Procedure: checkForStaleNodes()
 
 void ShoreBroker::checkForStaleNodes()
 {
@@ -233,12 +338,11 @@ void ShoreBroker::checkForStaleNodes()
   }
 }
 
-
 //------------------------------------------------------------
 // Procedure: handleMailNodePing()
-//   Example: NODE_BROKER_PING = "COMMUNITY=alpha,IP=128.2.3.4,
-//                       PORT=9000,PORT_UDP=9200,keyword=lemon
-//                       pshare_iroutes=multicast_8#localhost:9000"
+//   Example: NODE_BROKER_PING = "community=abe,host_ip=192.168.7.6,
+//                      port_db=9000,pshare_iroutes=192.168.7.6:9200
+//                      time_warp=5,time=8351001297.78,key=1
 
 void ShoreBroker::handleMailNodePing(const string& info)
 {
@@ -342,7 +446,7 @@ void ShoreBroker::makeBridgeRequestAll()
 // PSHARE_CMD="cmd=output,
 //             src_name=FOO,
 //             dest_name=BAR,
-//             route=localhost:9000 & multicast_8
+//             route=localhost:9000 & 192.168.1.5:9200
 
 void ShoreBroker::makeBridgeRequest(string src_var, HostRecord hrecord, 
 				    string alias, unsigned int node_index)
@@ -371,6 +475,12 @@ void ShoreBroker::makeBridgeRequest(string src_var, HostRecord hrecord,
   pshare_post += ",route=" + pshare_iroutes;
   Notify("PSHARE_CMD", pshare_post);
 
+  // If this is a new bridge, update the posted list of bridges
+  if(!m_set_bridge_vars.count(src_var)) {
+    m_set_bridge_vars.insert(src_var);
+    postBridgeSet();
+  }
+  
   reportEvent("PSHARE_CMD:" + pshare_post);
   m_pshare_cmd_posted++;
 }
@@ -407,6 +517,8 @@ void ShoreBroker::handleConfigBridge(const string& line)
 
   if(alias == "")
     alias = src;
+
+  m_set_bridge_vars.insert(src);
   
   handleConfigBridgeAux(src, alias);
 }
@@ -431,6 +543,7 @@ void ShoreBroker::handleConfigQBridge(const string& line)
     if(strContains(src_var, '=')) 
       reportConfigWarning("Invalid QBRIDGE component: " + src_var);
     else {
+      m_set_qbridge_vars.insert(src_var);
       handleConfigBridgeAux(src_var+"_ALL", src_var);
       handleConfigBridgeAux(src_var+"_$V", src_var);
     }
@@ -449,6 +562,46 @@ void ShoreBroker::handleConfigBridgeAux(string src_var, string alias)
 
   m_bridge_src_var.push_back(src_var);
   m_bridge_alias.push_back(alias);
+}
+
+//------------------------------------------------------------
+// Procedure: handleConfigTryVNode()
+//   Example: route=192.168.7.6:9200
+//   Example: route=192.168.7.6      (9200 default)
+
+bool ShoreBroker::handleConfigTryVNode(string vnode)
+{
+  string ip,port;
+  
+  vector<string> svector = parseString(vnode, ',');
+  for(unsigned int i=0; i<svector.size(); i++) {
+    string param = biteStringX(svector[i], '=');
+    string value = svector[i];
+
+    if(param == "route") {
+      ip   = biteStringX(value, ':');
+      port = value;
+      if(port == "")
+	port = "9200";
+    }
+    else
+      return(false);
+  }
+
+  if(!isValidIPAddress(ip))
+    return(false);
+  if(!isNumber(port))
+    return(false);
+
+  string route = ip + ":" + port;
+
+  if(vectorContains(m_try_vnodes, route)) {
+    reportConfigWarning("Duplicate vnode route:" + route);
+    return(false);
+  }
+  
+  m_try_vnodes.push_back(route);
+  return(true);
 }
 
 //------------------------------------------------------------

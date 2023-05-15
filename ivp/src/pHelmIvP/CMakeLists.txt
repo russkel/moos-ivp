@@ -26,8 +26,10 @@ ADD_EXECUTABLE(pHelmIvP ${SRC})
 TARGET_LINK_LIBRARIES(pHelmIvP 
   ${MOOS_LIBRARIES}
   helmivp
-  contacts
   behaviors-marine
+  bhv_fixedturn
+  turngeo
+  contacts
   behaviors-colregs
   ufield
   behaviors

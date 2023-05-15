@@ -2,7 +2,8 @@
 /*    NAME: Michael Benjamin                                     */
 /*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
 /*    FILE: NodeReporter.h                                       */
-/*    DATE: Feb 9th 2006 (TransponderAIS)                        */
+/*    DATE: Feb  9th 2006 (TransponderAIS)                       */
+/*    DATE: Nov 18th 2022 Added odometry/mission_hash support    */
 /*                                                               */
 /* This file is part of MOOS-IvP                                 */
 /*                                                               */
@@ -30,6 +31,8 @@
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 #include "NodeRecord.h"
 #include "NodeRiderSet.h"
+#include "Odometer.h"
+#include "LinearExtrapolator.h"
 
 class NodeReporter : public AppCastingMOOSApp
 {
@@ -59,7 +62,8 @@ public:
   void handleHelmSwitch();
 
   void updateNavWarning(bool ok_nav) const;
-
+  void updateMHashOdo();
+  
   bool handleMailRiderVars(std::string, std::string, double);
   
  protected: // Configuration Variables (Node Reports)
@@ -70,6 +74,12 @@ public:
   std::string  m_group_name;
   bool         m_terse_reports;
   std::string  m_allow_color_change;
+
+  // Sep 01, 2022
+  bool         m_extrap_enabled;
+  double       m_extrap_pos_thresh;
+  double       m_extrap_hdg_thresh;
+  double       m_extrap_max_gap;
   
  protected: // State Variables (Node Reports)
   CMOOSGeodesy m_geodesy;
@@ -85,7 +95,7 @@ public:
 
   // Oct 18, 2021
   double m_nav_grace_period;
-  bool m_nav_warning_posted;
+  bool   m_nav_warning_posted;
   
   NodeRecord   m_record;
   NodeRecord   m_record_gt;
@@ -119,6 +129,16 @@ public:
   std::vector<double>      m_plat_post_tstamp;
   std::vector<double>      m_plat_recv_tstamp;
 
+ protected: 
+  LinearExtrapolator m_extrapolator;
+  NodeRecord         m_record_last_posted;
+
+protected: //MissionHash support
+  Odometer                      m_odometer;
+  std::string                   m_curr_mhash;
+  double                        m_max_extent;
+  double                        m_max_extent_prev;
+  
  protected: // NodeRider support
   NodeRiderSet m_riderset;
 };

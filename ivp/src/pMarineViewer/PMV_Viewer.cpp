@@ -30,6 +30,7 @@
 #include "AngleUtils.h"
 #include "ColorParse.h"
 #include "BearingLine.h"
+#include "NodeRecordUtils.h"
 
 // As of Release 15.4 this is now set in CMake, defaulting to be defined
 // #define USE_UTM 
@@ -77,6 +78,10 @@ PMV_Viewer::PMV_Viewer(int x, int y, int w, int h, const char *l)
   m_rclick_ix = 0;
   m_bclick_ix = 0;
 
+  m_config_complete = false;
+  
+  m_extrapolate = 5; // default extrapolate 5 secs for stale reps
+  
   string str = "x=$(XPOS),y=$(YPOS),lat=$(LAT),lon=$(LON),";
   str += "vname=$(VNAME),counter=$(IX)";
   VarDataPair lft_pair("MVIEWER_LCLICK", str); 
@@ -94,6 +99,11 @@ PMV_Viewer::PMV_Viewer(int x, int y, int w, int h, const char *l)
 
 void PMV_Viewer::draw()
 {
+  if(!m_config_complete) {
+    clearBackground();
+    return;
+  }
+  
   m_elapsed = (m_curr_time - m_last_draw_time);
 
 #if 0
@@ -341,7 +351,11 @@ bool PMV_Viewer::setParam(string param, double value)
     m_time_warp = value;
     return(true);
   }
-
+  else if(param == "extrapolate") {
+    m_extrapolate = value;
+    return(true);
+  }
+  
   bool handled = MarineViewer::setParam(param, value);
 
   handled = handled || m_vehi_settings.setParam(param, value);
@@ -373,7 +387,7 @@ vector<string> PMV_Viewer::getStaleVehicles(double thresh)
 
 
 //-------------------------------------------------------------
-// Procedure: drawVehicle
+// Procedure: drawVehicle()
 
 void PMV_Viewer::drawVehicle(string vname, bool active, string vehibody)
 {
@@ -455,11 +469,14 @@ void PMV_Viewer::drawVehicle(string vname, bool active, string vehibody)
 
   record.setName(vname_aug);
 
+  if(m_extrapolate > 0)
+    record = extrapolateRecord(record, m_curr_time, m_extrapolate);
+  
   drawCommonVehicle(record, bng_line, vehi_color, vname_color, vname_draw, 1, transp);
 }
 
 //-------------------------------------------------------------
-// Procedure: drawTrailPoints
+// Procedure: drawTrailPoints()
 
 void PMV_Viewer::drawTrailPoints(CPList &cps, unsigned int trail_length)
 {
@@ -1019,13 +1036,3 @@ void PMV_Viewer::calculateDrawHash()
 
   drawFastHash(xl-buffer, xh+buffer, yl-buffer, yh+buffer);
 }
-
-
-
-
-
-
-
-
-
-

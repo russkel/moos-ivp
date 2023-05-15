@@ -55,6 +55,8 @@ class CollisionDetector : public AppCastingMOOSApp
   void postFlags(const std::vector<VarDataPair>&, const CPAEvent&);
 
   std::string expandMacroCD(std::string, std::string v1, std::string v2);
+
+  void postRings();
   
  protected: // Functions in support of logic conditions
   bool updateInfoBuffer(CMOOSMsg&);
@@ -72,6 +74,8 @@ class CollisionDetector : public AppCastingMOOSApp
   bool   m_post_closest_range;
   bool   m_post_closest_range_ever;
 
+  bool   m_encounter_rings;
+  
   std::vector<VarDataPair> m_collision_flags;
   std::vector<VarDataPair> m_near_miss_flags;
   std::vector<VarDataPair> m_encounter_flags;
@@ -85,7 +89,8 @@ class CollisionDetector : public AppCastingMOOSApp
   bool m_conditions_ok;
 
   bool m_report_all_encounters;
-  
+
+  // Each map uses the vehicle name as the key
   std::map<std::string, unsigned int> m_map_vname_collisions;
   std::map<std::string, unsigned int> m_map_vname_near_misses;
   std::map<std::string, unsigned int> m_map_vname_encounters;

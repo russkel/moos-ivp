@@ -48,6 +48,9 @@ NodeBroker::NodeBroker()
   m_host_info_changes = 0;
 
   m_messaging_policy = "";
+
+  m_ping_sent_utc = 0;
+  m_ok_ack_utc    = 0;
 }
 
 //---------------------------------------------------------
@@ -80,6 +83,14 @@ bool NodeBroker::OnNewMail(MOOSMSG_LIST &NewMail)
 
     else if(key == "DB_CLIENTS")
       checkMessagingPolicy(sval);
+    
+    else if(key == "TRY_SHORE_HOST") {
+      bool handled = handleConfigTryShoreHost(sval, false);
+      if(!handled)
+	reportRunWarning("Invalid incoming TRY_SHORE_HOST:"+sval);
+      else
+	registerPingBridges(true);
+    }
 
     // Only accept an ACK coming from a different community
     else if((key == "NODE_BROKER_ACK") && !msg_is_local) 
@@ -118,7 +129,7 @@ bool NodeBroker::Iterate()
     registerPingBridges();
   
   sendNodeBrokerPing();
-  
+
   AppCastingMOOSApp::PostReport();
   return(true);
 }
@@ -140,7 +151,8 @@ bool NodeBroker::OnStartUp()
     reportConfigWarning("No config block found for " + GetAppName());
 
   bool auto_bridge_realmcast = true;
-  bool auto_bridge_appcast = true;
+  bool auto_bridge_appcast   = true;
+  bool auto_bridge_pshare_vars = true;
   
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) {
@@ -158,6 +170,8 @@ bool NodeBroker::OnStartUp()
       handled = setBooleanOnString(auto_bridge_realmcast, value);
     else if(param == "auto_bridge_appcast") 
       handled = setBooleanOnString(auto_bridge_appcast, value);
+    else if(param == "auto_bridge_pshare_vars") 
+      handled = setBooleanOnString(auto_bridge_pshare_vars, value);
 
     if(!handled)
       reportUnhandledConfigWarning(orig);
@@ -170,6 +184,8 @@ bool NodeBroker::OnStartUp()
   }
   if(auto_bridge_appcast)
     handleConfigBridge("src=APPCAST");
+  if(auto_bridge_pshare_vars)
+    handleConfigBridge("src=NODE_PSHARE_VARS");
 
   registerVariables();
   registerPingBridges();
@@ -185,6 +201,7 @@ void NodeBroker::registerVariables()
 
   Register("NODE_BROKER_ACK", 0);
   Register("PHI_HOST_INFO", 0);
+  Register("TRY_SHORE_HOST", 0);
 
   if(m_messaging_policy == "auto")
     Register("DB_CLIENTS", 0);
@@ -210,10 +227,23 @@ void NodeBroker::sendNodeBrokerPing()
   string ping_msg = m_node_host_record.getSpec();
   
   for(unsigned int i=0; i<m_shore_routes.size(); i++) {
-    string aug_ping_msg = ping_msg + ",key=" + uintToString(i);
-    Notify("NODE_BROKER_PING_"+uintToString(i), aug_ping_msg);
-    m_shore_pings_sent[i]++;
-    m_pings_posted++;
+
+    // Dynamic threshold for sending out pings. If we have received
+    // an ACK from the shoreside recently, we only re-send every 20
+    // secs. If no recent ACKS, then send more frequently.
+    double elapsed_ping_sent = m_curr_time - m_ping_sent_utc;
+    double elapsed_ack_rcvd  = m_curr_time - m_ok_ack_utc;
+    double thresh = 20;
+    if(elapsed_ack_rcvd > 5)
+      thresh = 5;
+
+    if(elapsed_ping_sent > thresh) {
+      string aug_ping_msg = ping_msg + ",key=" + uintToString(i);
+      Notify("NODE_BROKER_PING_"+uintToString(i), aug_ping_msg);
+      m_shore_pings_sent[i]++;
+      m_pings_posted++;
+      m_ping_sent_utc = m_curr_time;
+    }
   }
 }
 
@@ -256,8 +286,18 @@ void NodeBroker::checkMessagingPolicy(string db_clients)
 //------------------------------------------------------------
 // Procedure: registerPingBridges()
 
-void NodeBroker::registerPingBridges()
+void NodeBroker::registerPingBridges(bool only_latest)
 {
+  if(only_latest && (m_shore_routes.size() > 0)) {
+    unsigned int index = m_shore_routes.size()-1;
+    string src  = "NODE_BROKER_PING_"+uintToString(index);
+    string dest = "NODE_BROKER_PING";
+    string route = m_shore_routes[index];
+    postPShareCommand(src, dest, route);
+    return;
+  }
+    
+  
   for(unsigned int i=0; i<m_shore_routes.size(); i++) {
     string src  = "NODE_BROKER_PING_"+uintToString(i);
     string dest = "NODE_BROKER_PING";
@@ -289,7 +329,6 @@ void NodeBroker::registerUserBridges()
     }
   }
 }
-
 
 //------------------------------------------------------------
 // Procedure: handleConfigBridge()
@@ -349,7 +388,8 @@ bool NodeBroker::handleConfigBridge(string line)
 //------------------------------------------------------------
 // Procedure: handleConfigTryShoreHost()
 
-bool NodeBroker::handleConfigTryShoreHost(string original_line)
+bool NodeBroker::handleConfigTryShoreHost(string original_line,
+					  bool dup_warn)
 {
   string pshare_route;
 
@@ -368,6 +408,15 @@ bool NodeBroker::handleConfigTryShoreHost(string original_line)
   if(!isValidPShareRoute(pshare_route, ip_err_msg)) {
     reportConfigWarning(ip_err_msg);
     return(false);
+  }
+
+  if(vectorContains(m_shore_routes, pshare_route)) {
+    if(dup_warn) {
+      reportConfigWarning("Duplicate try_shore_host:" + pshare_route);
+      return(false);
+    }
+    else // just ignore 
+      return(true);
   }
   
   m_shore_routes.push_back(pshare_route);
@@ -416,7 +465,11 @@ void NodeBroker::handleMailAck(string ack_msg)
   m_shore_timewarp[key_ix] = hrecord.getTimeWarp();
   m_shore_pings_ack[key_ix]++;
 
+  string msg = stringVectorToString(m_bridge_alias);
+  Notify("NODE_PSHARE_VARS", msg);
+  
   m_ok_acks_received++;
+  m_ok_ack_utc = m_curr_time;
 
   // Set up the user-configured variable bridges.
   registerUserBridges();
@@ -510,6 +563,7 @@ bool NodeBroker::buildReport()
   m_msgs << "        HostIP: " << m_node_host_record.getHostIP()          << endl; 
   m_msgs << "   Port MOOSDB: " << m_node_host_record.getPortDB()          << endl; 
   m_msgs << "     Time Warp: " << m_node_host_record.getTimeWarp()        << endl; 
+  m_msgs << "  Comms Policy: " << commsPolicy()                           << endl; 
 
   string try_host_ips;
   for(unsigned int i=0; i<m_try_host_ips.size(); i++) {

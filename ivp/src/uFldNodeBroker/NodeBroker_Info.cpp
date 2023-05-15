@@ -134,6 +134,7 @@ void showInterfaceAndExit()
   blk("  NODE_BROKER_ACK = community=shoreside,host=192.168.1.99,      ");
   blk("                    port=9000,port_udp=9200,timewarp=8,         ");
   blk("                    status=ok                                   ");
+  blk("  TRY_SHORE_HOST  = pshare_route=192.168.4.100:9200             ");
   blk("                                                                ");
   blk("PUBLICATIONS:                                                   ");
   blk("------------------------------------                            ");
@@ -142,6 +143,8 @@ void showInterfaceAndExit()
   blk("  NODE_BROKER_PING = community=henry,host=12.16.1.22,port=9000, ");
   blk("                     time_warp=8,pshare_iroutes=12.18.1.22:9200,");
   blk("                     time=1325178800.81                         ");
+  blk("                                                                ");
+  blk("  NODE_PSHARE_VARS = list of all pshare aliases (for uFldDelve) ");
   blk("                                                                ");
   exit(0);
 }
@@ -154,12 +157,3 @@ void showReleaseInfoAndExit()
   showReleaseInfo("uFldNodeBroker", "gpl");
   exit(0);
 }
-
-
-
-
-
-
-
-
-

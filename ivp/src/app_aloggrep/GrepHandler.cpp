@@ -51,11 +51,18 @@ GrepHandler::GrepHandler()
   m_appcast_retained = false;
 
   m_final_only   = false;
+  m_first_only   = false;
 
   m_format_vals  = false;
+  m_format_srcs  = false;
   m_format_vars  = false;
   m_format_time  = false;
   m_make_report  = true;
+
+  // When keep_key is true, and subpat enabled, the column will keep
+  // the sub-pattern key, e.g., --subpat=spd --keepkey will result in
+  // spd=3.2 (as opposed to just 3.2).
+  m_keep_key     = false;
   
   m_cache_size   = 1000;
 
@@ -175,8 +182,11 @@ bool GrepHandler::handle()
 	if(!checkRetain(line_raw))
 	  ignoreLine(line_raw);
 	else {
-	  if(!m_sort_entries) 
+	  if(!m_sort_entries) {
 	    outputLine(line_raw);
+	    if(m_first_only)
+	      done_reading_sorted = true;
+	  }
 	  else {
 	    string stime = getTimeStamp(line_raw);
 	    double dtime = atof(stime.c_str());
@@ -202,6 +212,8 @@ bool GrepHandler::handle()
 	ALogEntry entry = sorter.popEntry();
 	string line_raw = entry.getRawLine();
 	outputLine(line_raw);
+	if(m_first_only)
+	  done_reading_sorted = true;
       }
     }
   }
@@ -344,7 +356,7 @@ void GrepHandler::addKey(string key)
 //  Examples: time:val
 //            val
 //            time:var:val
-//      Note: Ok components: var,val,time
+//      Note: Ok components: var,val,src,time
 
 bool GrepHandler::setFormat(string str)
 {
@@ -358,6 +370,8 @@ bool GrepHandler::setFormat(string str)
       m_format_vars = true;
     else if(part == "time")
       m_format_time = true;
+    else if(part == "src")
+      m_format_srcs = true;
     else if(part != "val")
       return(false);
   }
@@ -383,10 +397,37 @@ void GrepHandler::outputLine(const string& line, bool last)
   // First handle if just output value field
   if(m_format_vals) {
     string line_val = stripBlankEnds(getDataEntry(line));
-    string tstamp = getTimeStamp(line);
+    string tstamp   = getTimeStamp(line);
+    string line_src = getSourceName(line);
     if(tstamp == m_last_tstamp)
       return;
 
+    if(m_subpat.size() != 0) {
+      string maybe_line_val;
+      for(unsigned int i=0; i<m_subpat.size(); i++) {
+	string line_val_low = tolower(line_val);
+	string key = m_subpat[i];
+	if(strContains(line_val_low, key)) {
+	  string val = tokStringParse(line_val_low, key, ',', '=');
+	  if(val != "") {
+	    if(maybe_line_val != "") {
+	      if(m_keep_key)
+		maybe_line_val += ", ";
+	      else
+		maybe_line_val += " ";
+	    }
+	    string key_str;
+	    if(m_keep_key)
+	      key_str = key + "=";
+	    maybe_line_val += key_str + val;
+	  }
+	}
+      }
+      if(maybe_line_val != "")
+	line_val = maybe_line_val;
+    }
+
+#if 0
     if(m_subpat != "") {
       string line_val_low = tolower(line_val);
       if(strContains(line_val_low, m_subpat)) {
@@ -395,6 +436,7 @@ void GrepHandler::outputLine(const string& line, bool last)
 	  line_val = val;
       }
     }
+#endif
     
     if(m_format_vars) {
       string line_var = stripBlankEnds(getVarName(line));	
@@ -403,7 +445,10 @@ void GrepHandler::outputLine(const string& line, bool last)
 
     if(m_format_time)
       line_val = tstamp + m_colsep + line_val;
-      
+
+    if(m_format_srcs)
+      line_val = line_src;
+    
     if(m_file_out)
       fprintf(m_file_out, "%s\n", line_val.c_str());
     else

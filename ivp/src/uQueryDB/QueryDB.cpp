@@ -31,7 +31,7 @@ extern bool MOOSAPP_OnConnect(void*);
 extern bool MOOSAPP_OnDisconnect(void*);
 
 //------------------------------------------------------------
-// Constructor
+// Constructor()
 
 QueryDB::QueryDB()
 {
@@ -208,7 +208,8 @@ bool QueryDB::OnStartUp()
 
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(false);
-  m_MissionReader.GetConfiguration(GetAppName(), sParams);
+  //m_MissionReader.GetConfiguration(GetAppName(), sParams);
+  m_MissionReader.GetConfiguration("uQueryDB", sParams);
 
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) {
@@ -238,6 +239,8 @@ bool QueryDB::OnStartUp()
       reportUnhandledConfigWarning(orig);
   }
     
+  m_ac.setProcName("uQueryDB");
+
   registerVariables();
   return(true);
 }
@@ -360,6 +363,9 @@ void QueryDB::reportCheckVars()
 //            1  A pass condition unsat
 //            1  Any fail conditions satisfied
 //            0  otherwise (THIS MEANS PASS)
+//      Note: The xlaunch.sh utility script, which uses uQueryDB,
+//            looks for a return value of 0 (pass). Upon 0, it
+//            will halt the mission. 
 
 void QueryDB::checkPassFailConditions()
 {

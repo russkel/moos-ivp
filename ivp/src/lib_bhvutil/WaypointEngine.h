@@ -35,6 +35,7 @@ class WaypointEngine {
   ~WaypointEngine() {}
 
   void   setSegList(const XYSegList& seglist);
+  void   setSegList(const std::vector<XYPoint>& pts);
   void   setReverse(bool);
   void   setReverseToggle();
   void   setCaptureRadius(double);
@@ -44,6 +45,7 @@ class WaypointEngine {
   void   setCenter(double, double);
   void   resetSegList(double, double y);
   void   resetForNewTraversal();
+  void   resetState();
   void   setRepeat(unsigned int v)  {m_repeats_allowed = v;}
   void   setCaptureLine(bool v)     {m_capture_line = v;}
   void   setPerpetual(bool v)       {m_perpetual = v;}
@@ -81,32 +83,30 @@ class WaypointEngine {
   double  distToPrevWpt(double osx, double osy) const;
   double  distToNextWpt(double osx, double osy) const;
 
-
- protected:
-  XYSegList m_seglist;
-  XYSegList m_seglist_raw;
-
+protected: // Config Vars
   bool      m_reverse;
   bool      m_perpetual;
+  bool      m_capture_line;
   double    m_capture_radius;
   double    m_slip_radius;
-  bool      m_capture_line;
+  bool      m_repeats_endless;
 
-  double    m_current_cpa;
-  bool      m_complete;
-  int       m_prev_ix;
-  int       m_curr_ix;
-  unsigned int  m_cycle_count;
-
+  unsigned int m_repeats_allowed;
+  
+protected: // State Vars
+  XYSegList m_seglist;
+  XYSegList m_seglist_raw;
   XYPoint   m_prevpt;
 
-  bool          m_repeats_endless;
-  unsigned int  m_repeats_allowed;
-  unsigned int  m_repeats_sofar;
-
+  int       m_curr_ix;
+  int       m_prev_ix;
+  bool      m_complete;
+  double    m_current_cpa;
 
   unsigned int  m_capture_hits;
   unsigned int  m_nonmono_hits;
+  unsigned int  m_cycle_count;
+  unsigned int  m_repeats_sofar;
 };
 
 #endif

@@ -25,6 +25,7 @@
 #include <iostream>
 #include "PMV_MOOSApp.h"
 #include "MBUtils.h"
+#include "HashUtils.h"
 #include "MacroUtils.h"
 #include "VarDataPairUtils.h"
 #include "NodeRecordUtils.h"
@@ -39,10 +40,13 @@ using namespace std;
 PMV_MOOSApp::PMV_MOOSApp() 
 {
   m_pending_moos_events = 0;
-  m_gui             = 0; 
-  m_last_redraw_time = 0;
+  m_gui                = 0; 
+  m_last_redraw_time   = 0;
   m_last_updatexy_time = 0;
-
+  m_last_mhash_time    = 0;
+  m_last_beat_time     = 0;
+  m_block_heartbeat    = false;
+  
   VarDataPair pair1("HELM_MAP_CLEAR", 0);
   VarDataPair pair2("PMV_CONNECT", 0);
   m_connection_pairs.push_back(pair1);
@@ -51,7 +55,7 @@ PMV_MOOSApp::PMV_MOOSApp()
 
   m_appcast_repo             = 0;
   m_appcast_last_req_time    = 0;
-  m_appcast_request_interval = 1.0;  // seconds
+  m_appcast_request_interval = 2.0;  // seconds
 
   m_realm_repo               = 0;
   m_relcast_last_req_time    = 0;
@@ -66,7 +70,7 @@ PMV_MOOSApp::PMV_MOOSApp()
   
   m_pmv_iteration = 0;
 
-  m_last_beat_time = 0;
+  m_mission_hash_var = "MISSION_HASH";
   
   m_log_the_image = false;
 }
@@ -246,6 +250,7 @@ void PMV_MOOSApp::registerVariables()
   Register("PMV_CLEAR", 0);
   Register("PMV_CENTER");
   Register("PMV_CONFIG");
+  Register("BLOCK_HEARTBEAT");
 
   unsigned int i, vsize = m_scope_vars.size();
   for(i=0; i<vsize; i++)
@@ -365,7 +370,8 @@ void PMV_MOOSApp::handleNewMail(const MOOS_event & e)
       handled = handleMailCenter(sval);
     else if(key == "PMV_CONFIG") 
       handled = handleMailConfig(sval);
-
+    else if(key == "BLOCK_HEARTBEAT") 
+      handled = setBooleanOnString(m_block_heartbeat, sval);
       
     // PMV_MENU_CONTEXT = 
     // side=left, menukey=polyvert, post="POLY_VERT=x=$(XPOS),y=$(YPOS)"
@@ -479,8 +485,8 @@ void PMV_MOOSApp::handleNewMail(const MOOS_event & e)
   else if(new_proc_count > old_proc_count) {
     string key = GetAppName() + "newproc";
     postAppCastRequest("all", "all", key, "any", (1.1*m_time_warp));
+    Notify("REGION_INFO", m_region_info);
   }
-  
 
   // Update the Node entries if there is ANY new appcast
   if(handled_appcast)
@@ -534,9 +540,24 @@ void PMV_MOOSApp::handleIterate(const MOOS_event & e)
     m_last_updatexy_time = curr_time;
   }
 
-  if(beat_elapsed > 4)
+  if((beat_elapsed > 4) && !m_block_heartbeat)
     postFlags(m_beat_flags);
+
+  if((m_pmv_iteration < 50) || ((m_pmv_iteration % 100) == 0))
+    Notify("REGION_INFO", m_region_info);
   
+  
+
+  // Re-post the mission hash once every 16 secs realtime
+  if(m_mission_hash_var != "") {
+    double hash_elapsed = (curr_time - m_last_mhash_time);
+    if((m_last_mhash_time == 0) || (hash_elapsed > 16)) {
+      //Notify("MISSION_HASH", m_mission_hash);
+      Notify(m_mission_hash_var, m_mission_hash);
+      m_last_mhash_time = curr_time;
+    }
+  }
+
   m_gui->mviewer->setParam("curr_time", e.moos_time);
   m_gui->setCurrTime(curr_time);
 
@@ -629,8 +650,15 @@ void PMV_MOOSApp::handleAppCastRequesting(bool force)
   // Want to request less frequently if using a higher time warp.
   double moos_elapsed_time = m_curr_time - m_appcast_last_req_time;
   double real_elapsed_time = moos_elapsed_time / m_time_warp;
-  
-  if(real_elapsed_time >= m_appcast_request_interval) {
+
+  double appcast_request_interval = m_appcast_request_interval;
+  double appcast_dur = 3;
+  if(commsPolicy() != "open") {
+    appcast_request_interval *= 5;
+    appcast_dur *= 4;
+  }
+    
+  if(real_elapsed_time >= appcast_request_interval) {
     m_appcast_last_req_time = m_curr_time;
     string refresh_mode = m_appcast_repo->getRefreshMode();
     string current_node = m_appcast_repo->getCurrentNode();
@@ -638,15 +666,15 @@ void PMV_MOOSApp::handleAppCastRequesting(bool force)
     
     if(refresh_mode == "streaming") {
       string key = GetAppName() + ":" + m_host_community;      
-      postAppCastRequest("all", "all", key, "any", 3);
+      postAppCastRequest("all", "all", key, "any", appcast_dur);
     }
     else if(refresh_mode == "events") {
       // Not critical that key names be unique, but good practice to 
       // head off multiple uMAC clients from interfering
       string key_app = GetAppName() + ":" + m_host_community + "app";      
       string key_gen = GetAppName() + ":" + m_host_community + "gen";      
-      postAppCastRequest(current_node, current_proc, key_app, "any", 3);
-      postAppCastRequest("all", "all", key_gen, "run_warning", 3);
+      postAppCastRequest(current_node, current_proc, key_app, "any", appcast_dur);
+      postAppCastRequest("all", "all", key_gen, "run_warning", appcast_dur);
     }
   }
 }
@@ -744,9 +772,6 @@ void PMV_MOOSApp::handleRealmCastRequesting()
 void PMV_MOOSApp::handleStartUp(const MOOS_event & e) {
   // Keep track of whether the back images were user configured.
   // If not, we'll use the default image afterwards.
-  bool tiff_a_set = false;
-  bool tiff_b_set = false;
-
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(false);
   if(!m_MissionReader.GetConfiguration(GetAppName(), sParams)) 
@@ -857,6 +882,11 @@ void PMV_MOOSApp::handleStartUp(const MOOS_event & e) {
       handled = m_gui->mviewer->setParam(param, value);
     else if(param == "stale_remove_thresh") 
       handled = m_gui->mviewer->setParam(param, value);
+    else if(param == "mission_hash_var") {
+      handled = setNonWhiteVarOnString(m_mission_hash_var, value);
+      if(tolower(m_mission_hash_var) == "off")
+	m_mission_hash_var = "";
+    }
     else if(param == "cmd") 
       handled = handleConfigCmd(value);
 
@@ -874,17 +904,12 @@ void PMV_MOOSApp::handleStartUp(const MOOS_event & e) {
       string key = getContextKey(param);
       handled = m_gui->addMousePoke("right", key, value);
     }
-    else if(param == "tiff_file") {
-      if(!tiff_a_set) {
-	tiff_a_set = m_gui->mviewer->setParam(param, value);
-      }
-      handled = true;
-    }
-    else if(param == "tiff_file_b") {
-      if(!tiff_b_set) 
-	tiff_b_set = m_gui->mviewer->setParam(param, value);
-      handled = true;
-    }
+    else if(param == "null_tiff")
+      handled = m_gui->mviewer->handleNoTiff();
+    else if(param == "tiff_file")
+      handled = m_gui->mviewer->setParam(param, value);
+    else if(param == "tiff_file_b")
+      handled = m_gui->mviewer->setParam(param, value);
     else if(param == "node_report_variable") {
       if(!strContainsWhite(value)) {
 	m_node_report_vars.push_back(value);
@@ -930,41 +955,31 @@ void PMV_MOOSApp::handleStartUp(const MOOS_event & e) {
       reportUnhandledConfigWarning(orig);
   }
 
-  if(tiff_a_set && m_log_the_image) {
-    string command = "COPY_FILE_REQUEST=";
-    string tiff_file = m_gui->mviewer->getTiffFileA();
-    string info_file = m_gui->mviewer->getInfoFileA();
-    if((tiff_file != "") && (info_file != "")) {
-      Notify("PLOGGER_CMD", command + tiff_file);
-      Notify("PLOGGER_CMD", command + info_file);
-    }
-  }
-
-  if(tiff_b_set && m_log_the_image) {
-    string command = "COPY_FILE_REQUEST=";
-    string tiff_file = m_gui->mviewer->getTiffFileB();
-    string info_file = m_gui->mviewer->getInfoFileB();
-    if((tiff_file != "") && (info_file != "")) {
-      Notify("PLOGGER_CMD", command + tiff_file);
-      Notify("PLOGGER_CMD", command + info_file);
-    }
-  }
-
-#if 0
   // If no images were specified, use the default images.
-  if(!tiff_a_set && !tiff_b_set) {
+  if(m_gui->mviewer->getTiffFileCount() == 0)
     m_gui->mviewer->setParam("tiff_file", "Default.tif");
-    m_gui->mviewer->setParam("tiff_file_b", "DefaultB.tif");
-  }
-#endif
 
   bool changed = m_realm_repo->checkStartCluster();
   if(changed) {
     m_gui->updateRealmCastNodes(true);
     m_gui->updateRealmCastProcs(true);
   }
-  
-  m_gui->mviewer->handleNoTiff();
+
+  m_gui->mviewer->setConfigComplete();
+
+  if(m_log_the_image) {
+    vector<string> tiff_files = m_gui->mviewer->getTiffFiles();
+    for(unsigned int i=0; i<tiff_files.size(); i++) {
+      string tiff_file = tiff_files[i];
+      string info_file = findReplace(tiff_files[i], ".tif", ".info");
+      string command = "COPY_FILE_REQUEST=";
+      if(tiff_file != "") {
+	Notify("PLOGGER_CMD", command + tiff_file);
+	Notify("PLOGGER_CMD", command + info_file);
+      }
+    }
+  }
+
   m_gui->setCommandFolio(m_cmd_folio);
 
   m_start_time = MOOSTime();
@@ -975,23 +990,32 @@ void PMV_MOOSApp::handleStartUp(const MOOS_event & e) {
   m_gui->calcButtonColumns();
   
   // Set the Region Info
-  string tiff_a = m_gui->mviewer->getTiffFileA();
-  string tiff_b = m_gui->mviewer->getTiffFileB();
-  if(tiff_a != "")
-    m_region_info += ", img_file=" + tiff_a;
-  if(tiff_b != "")
-    m_region_info += ", img_file=" + tiff_b;
+  vector<string> tiff_files = m_gui->mviewer->getTiffFiles();
+  if(tiff_files.size() == 0)
+    m_region_info += ", no_img_files";
+  for(unsigned int i=0; i<tiff_files.size(); i++) {
+    string tiff_file = rbiteString(tiff_files[i], '/');
+    m_region_info += ", img_file=" + tiff_file;
+  }
+  
   m_region_info += ", zoom=" + doubleToStringX(m_gui->mviewer->getZoom(),2);
   m_region_info += ", pan_x=" + doubleToStringX(m_gui->mviewer->getPanX(),2);
   m_region_info += ", pan_y=" + doubleToStringX(m_gui->mviewer->getPanY(),2);
-
+  Notify("REGION_INFO", m_region_info);
+ 
   if(m_node_report_vars.size() == 0) {
     m_node_report_vars.push_back("NODE_REPORT_LOCAL");
     m_node_report_vars.push_back("NODE_REPORT");
   }
-  
-  Notify("REGION_INFO", m_region_info);
 
+  // Post the Mission Hash (added Nov0322)
+  double actual_utc = MOOSTime();
+  if(m_time_warp != 0)
+    actual_utc = MOOSTime() / m_time_warp;
+
+  m_mission_hash = "mhash=" + missionHash();
+  m_mission_hash += ",utc=" + doubleToString(actual_utc,2);
+  
   registerVariables();
 }
 
@@ -1321,10 +1345,14 @@ void PMV_MOOSApp::postFlags(const vector<VarDataPair>& flags)
 
 bool PMV_MOOSApp::buildReport()
 {
-  string tiff_file_a = m_gui->mviewer->getTiffFileA();
-  string info_file_a = m_gui->mviewer->getInfoFileA();
-  string tiff_file_b = m_gui->mviewer->getTiffFileB();
-  string info_file_b = m_gui->mviewer->getInfoFileB();
+  vector<string> tiff_files = m_gui->mviewer->getTiffFiles();
+  for(unsigned int i=0; i<tiff_files.size(); i++) {
+    string tiff_file = tiff_files[i];
+    //tiff_file = rbiteString(tiff_file, '/');
+    m_msgs << "Tiff File: " << tiff_file << endl;
+  }
+  string curr_tiff_file = m_gui->mviewer->getTiffFileCurrent();
+  m_msgs << "Tiff File (Current): " << curr_tiff_file << endl;
 
   string iter_ac  = uintToString(m_iteration);
   string iter_pmv = uintToString(m_pmv_iteration);
@@ -1348,10 +1376,6 @@ bool PMV_MOOSApp::buildReport()
     node_rpt_vars += m_node_report_vars[i];
   }
   
-  m_msgs << "Tiff File A:       " << tiff_file_a << endl;
-  m_msgs << "Info File A:       " << info_file_a << endl;
-  m_msgs << "Tiff File B:       " << tiff_file_b << endl;
-  m_msgs << "Info File B:       " << info_file_b << endl;
   m_msgs << "------------------ " << endl;
   m_msgs << "Total GeoShapes:   " << m_gui->mviewer->shapeCount("total_shapes") << endl;
   m_msgs << "Clear GeoShapes:   " << m_clear_geoshapes_received << endl;
@@ -1359,6 +1383,9 @@ bool PMV_MOOSApp::buildReport()
   m_msgs << "Node Rpt Rate(R):  " << node_rep_real_rate_str << endl;
   m_msgs << "Node Rpt Rate(W):  " << node_rep_warp_rate_str << endl;
   m_msgs << "Node Report Vars:  " << node_rpt_vars << endl;
+  m_msgs << "Mission Hash:      " << m_mission_hash << endl;
+  m_msgs << "Mission Hash Var:  " << m_mission_hash_var << endl;
+  m_msgs << "Block Heartbeat:   " << boolToString(m_block_heartbeat) << endl;
   m_msgs << "------------------ " << endl;
   m_msgs << "AC Iterations:     " << iter_ac << endl;
   m_msgs << "PMV Iterations:    " << iter_pmv << endl;

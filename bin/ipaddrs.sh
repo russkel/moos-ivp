@@ -21,11 +21,14 @@ vechon() { if [ "$VERBOSE" != "" ]; then echo -n $1; fi }
 #--------------------------------------------------------------
 VERBOSE=""
 HEADER="yes"
+BLUNT="no"
 OS="osx"
-MATCH="192.168.7"
+MATCH=""
 MATCH_RES=""
 TMP_RESFILE="$HOME/.ipaddrs_pid$$"
 RESFILE="$HOME/.ipaddrs"
+BLUNT_IP="no"
+
 
 #--------------------------------------------------------------
 #  Part 3: Check for and handle command-line arguments
@@ -44,6 +47,7 @@ for ARGI; do
         echo "  --help,    -h      Display this help message          " 
         echo "  --info,    -i      Display short script description   " 
         echo "  --terse,   -t      Suppress header info               " 
+        echo "  --blunt,   -b      Single line only to terminal, no CR" 
         echo "  --verbose, -v      Verbose output IPs to terminal     " 
         echo "  --match=<pattern>  Return an IP matching a pattern    " 
 	echo "                                                        "
@@ -56,6 +60,7 @@ for ARGI; do
 	echo "  4 Missing the hostname system command                 "
 	echo "  5 Missing the ipconfig system command                 "
 	echo "  6 Missing the ifconfig system command                 "
+	echo "  7 No IP address or interface found                    "
 	echo "                                                        "
 	echo "Examples:                                               "
  	echo "  $ ipaddrs.sh                                          "
@@ -66,6 +71,8 @@ for ARGI; do
 	VERBOSE="yes"
     elif [ "${ARGI}" = "--terse" -o "${ARGI}" = "-t" ]; then
 	HEADER="no"
+    elif [ "${ARGI}" = "--blunt" -o "${ARGI}" = "-b" ]; then
+	BLUNT="yes"
     elif [ "${ARGI:0:8}" = "--match=" ]; then
         MATCH="${ARGI#--match=*}"
     elif [ "${ARGI}" = "--info"   -o "${ARGI}" = "-i" ]; then
@@ -113,15 +120,17 @@ if [ "${OS}" = "osx" ]; then
     fi
 fi
 
+# Unless changed, default exit code indicates no ipaddr found
+EXIT_CODE=7
 
-EXIT_CODE=0
 #--------------------------------------------------------------
 #  Part 6: Clear results file and Write file header if desired
 #--------------------------------------------------------------
 echo -n "" > $TMP_RESFILE
-if [ "$HEADER" = "yes" ]; then
+if [ "$HEADER" = "yes" -a "$BLUNT_IP" = "no" ]; then
+    DATE=`date`
     echo "// IP addresses of currently active network interfaces." >> $TMP_RESFILE
-    echo "// Produced automatically by the ipaddrs.sh utility.   " >> $TMP_RESFILE
+    echo "// Produced by ipaddrs.sh utility: $DATE   " >> $TMP_RESFILE
 fi
 
 #--------------------------------------------------------------
@@ -134,21 +143,24 @@ if [ "${OS}" = "osx" ]; then
     count=0
     for addr in "${addresses[@]}"
     do
+	if [ "${MATCH}" != "" ]; then
+	    if [[ "$addr" != "$MATCH"* ]]; then
+		continue
+	    fi
+	fi
+	
+	BLUNT_IP=$addr
 	vecho "addr:$addr"
 	echo $addr >> $TMP_RESFILE
-	
-	if [[ "$addr" == "$MATCH"* ]]; then
-	    echo $ipaddr
-	fi
-	    
-
 	((count=count+1))
     done
-    
-    if [ "$count" -gt 1 ]; then
+
+    if [ ${count} -gt 1 ]; then
 	EXIT_CODE=2
-    elif [ "$count" -gt 0 ]; then
+    elif [ ${count} = 0 ]; then
 	EXIT_CODE=1
+    else
+	EXIT_CODE=0
     fi
 fi
 
@@ -164,23 +176,41 @@ if [ "${OS}" = "linux" ]; then
     count=0
     for iface in "${interfaces[@]}"
     do
-	if [ "${VERBOSE}" = "yes" ]; then
-	    echo $iface
+	if [ "${MATCH}" != "" ]; then
+	    if [[ "$addr" != "$MATCH"* ]]; then
+		continue
+	    fi
 	fi
+
+	BLUNT_IP=$iface
+	vecho "addr:$iface"
 	echo $iface  >> $TMP_RESFILE
 	((count=count+1))
     done
     
-    if [ ${count} > 1 ]; then
+    if [ ${count} -gt 1 ]; then
 	EXIT_CODE=2
     elif [ ${count} = 0 ]; then
 	EXIT_CODE=1
+    else
+	EXIT_CODE=0	    
     fi
 fi
 
-
 #--------------------------------------------------------------
-#  Part 9: If the tmp file is different, install it.  By building a
+#  Part 9: If blunt_ip requested, just output the single IP to
+#          the terminal and remove the temp file
+#--------------------------------------------------------------
+if [ "$BLUNT" = "yes" ]; then
+    if [ $EXIT_CODE = 0 ]; then
+	echo -n $BLUNT_IP
+	rm -f $TMP_RESFILE
+	exit 0
+    fi
+fi
+    
+#--------------------------------------------------------------
+#  Part 10: If the tmp file is different, install it.  By building a
 #  tmp file, with a unique file name based on the PID, this gaurds
 #  against possibly several versions of this script running at nearly
 #  the same time, and possiblly all writing to the destinatin file.

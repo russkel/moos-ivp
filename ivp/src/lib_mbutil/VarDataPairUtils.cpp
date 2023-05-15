@@ -37,7 +37,7 @@ using namespace std;
 //                        @>55 MESSAGE = bye
 //            Dest tags:  #group MESSAGE = disperse
 //                        #all+  MESSAGE = gather
-//      Example: @cpa #group RETURN_HOME=tru
+//      Example: @cpa #group RETURN_HOME=true
 
 bool setVarDataPairOnString(VarDataPair& pair, string str)
 {
@@ -76,6 +76,11 @@ bool setVarDataPairOnString(VarDataPair& pair, string str)
 
 bool addVarDataPairOnString(vector<VarDataPair>& flags, string str)
 {
+  if(str == "clearall") {
+    flags.clear();
+    return(true);
+  }
+  
   VarDataPair pair;
   if(!setVarDataPairOnString(pair, str))
     return(false);

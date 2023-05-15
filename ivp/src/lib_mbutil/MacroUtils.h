@@ -33,16 +33,25 @@ std::string macroExpand(std::string, std::string, std::string);
 
 std::string macroExpandBool(std::string, std::string, bool);
 
-std::string macroExpand(std::string, std::string, double);
+std::string macroExpand(std::string, std::string, double, int v=3);
 
 std::string macroExpand(std::string, std::string, int);
 
 std::string macroExpand(std::string, std::string, unsigned int);
 
+std::string macroHashExpand(std::string, std::string);
+
 bool hasMacro(std::string, std::string);
 
 std::string getCounterMacro(std::string);
 
-std::vector<std::string> getMacrosFromString(std::string);
+std::vector<std::string> getMacrosFromString(std::string,
+					     char fchar='$',
+					     char lchar='[');
+std::string macroDefault(std::string);
+std::string macroBase(std::string, std::string sep="*=");
+
+std::string expandMacrosWithDefault(std::string);
+std::string reduceMacrosToBase(std::string, std::string, std::string);
 
 #endif

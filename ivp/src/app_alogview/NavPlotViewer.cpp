@@ -59,7 +59,8 @@ NavPlotViewer::NavPlotViewer(int x, int y, int w, int h, const char *l)
 
   m_alt_nav_prefix = "NAV_GT_";
 
-  m_geo_settings.setParam("hash_viewable", "true");
+  m_geo_settings.setParam("hash_viewable", "false");
+  m_geo_settings.setParam("hash_delta", "100000");
 }
 
 //-------------------------------------------------------------
@@ -115,7 +116,7 @@ bool NavPlotViewer::setParam(string param, string value)
 
   if(!handled)
     handled = MarineViewer::setParam(param, value);
-  
+
   return(handled);
 }
 
@@ -141,7 +142,7 @@ void NavPlotViewer::setMinimalMem()
 //-------------------------------------------------------------
 // Procedure: setDataBroker()
 
-void NavPlotViewer::setDataBroker(ALogDataBroker dbroker)
+void NavPlotViewer::setDataBroker(const ALogDataBroker& dbroker)
 {
   m_dbroker = dbroker;
 
@@ -597,6 +598,7 @@ void NavPlotViewer::drawVPlugPlot(unsigned int index)
   const map<string, XYPoint>&  points  = geo_shapes.getPoints();
   const map<string, XYCircle>& circles = geo_shapes.getCircles();
   const map<string, XYMarker>& markers = geo_shapes.getMarkers();
+  const map<string, XYArrow>&  arrows  = geo_shapes.getArrows();
 
   double global_logstart = m_dbroker.getGlobalLogStart();
   double utc_timestamp = global_logstart + m_curr_time;
@@ -606,6 +608,7 @@ void NavPlotViewer::drawVPlugPlot(unsigned int index)
   drawCircles(circles, utc_timestamp);
   drawPoints(points,   utc_timestamp);
   drawMarkers(markers, utc_timestamp);
+  drawArrows(arrows, utc_timestamp);
   drawRangePulses(rpulses, utc_timestamp);
   drawCommsPulses(cpulses, utc_timestamp);
   //drawSeglrs(seglrs);

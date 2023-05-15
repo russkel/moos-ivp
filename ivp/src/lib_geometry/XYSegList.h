@@ -36,12 +36,15 @@
 class XYSegList : public XYObject {
 public:
   XYSegList() {m_transparency=0.1;}
+  XYSegList(XYPoint, XYPoint, std::string label="");
+  XYSegList(double x1, double y1, double x2, double y2);
+
   virtual ~XYSegList() {}
 
   // XYSegList create and edit functions
   void   add_vertex(const XYPoint&, std::string s="");
   void   add_vertex(double, double, double=0, std::string s="");       
-  void   mod_vertex(unsigned int, double, double, double=0, std::string s="");       
+  void   mod_vertex(unsigned int, double, double, double=0, std::string s="");
   
   void   alter_vertex(double, double, double=0, std::string s="");
   void   delete_vertex(double, double);
@@ -68,12 +71,13 @@ public:
 public:
   unsigned int size() const     {return(m_vx.size());}
 
-  double get_vx(unsigned int) const;
-  double get_vy(unsigned int) const;
-  double get_vz(unsigned int) const;
+  XYPoint get_point(unsigned int) const;
+  double  get_vx(unsigned int) const;
+  double  get_vy(unsigned int) const;
+  double  get_vz(unsigned int) const;
   std::string get_vprop(unsigned int) const;
-  double get_center_x() const;
-  double get_center_y() const;
+  double  get_center_x() const;
+  double  get_center_y() const;
 
   XYPoint get_center_pt() const;
   XYPoint get_centroid_pt() const;
@@ -91,6 +95,7 @@ public:
   double max_dist_to_ctr() const;
   bool   segs_cross(bool loop=true) const;
   double length() const;
+  double length(unsigned int) const;
 
   std::string get_spec(unsigned int vertex_prec=1) const;
   std::string get_spec(std::string param) const;
@@ -118,7 +123,8 @@ protected:
   EdgeTagSet m_edge_tags;
   
   double   m_transparency;
-
 };
+
+std::string getSeglSpecInactive(std::string label);
 
 #endif

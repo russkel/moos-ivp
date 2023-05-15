@@ -107,6 +107,8 @@ HelmIvP::HelmIvP()
   m_refresh_pending  = false;
   m_refresh_time     = 0;
 
+  m_seed_random = true;
+  
   m_node_report_vars.push_back("AIS_REPORT");
   m_node_report_vars.push_back("NODE_REPORT");
   m_node_report_vars.push_back("AIS_REPORT_LOCAL");
@@ -309,6 +311,12 @@ bool HelmIvP::OnNewMail(MOOSMSG_LIST &NewMail)
       updateInfoBuffer(msg);
   }
 
+  // COMMS_POLICY mail is handled at the AppCastingMOOSApp superclass
+  // level. The current state of the comms policy is a member variable
+  // of this class (superclass). Pass along this value to the
+  // info_buffer.
+  m_info_buffer->setValue("COMMS_POLICY", commsPolicy(), m_curr_time);
+  
   if(helmStatus() == "STANDBY")
     checkForTakeOver();
   return(true);
@@ -643,7 +651,7 @@ void HelmIvP::postBehaviorMessages()
 }
 
 //------------------------------------------------------------
-// Procedure: buildReport
+// Procedure: buildReport()
 //      Note: A virtual function of the AppCastingMOOSApp superclass, conditionally 
 //            invoked if either a terminal or appcast report is needed.
 
@@ -662,6 +670,8 @@ bool HelmIvP::buildReport()
     m_msgs << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
     return(true);
   }
+
+  m_msgs << "  Comms Policy: " << commsPolicy()  << endl; 
 
   list<string> summary = m_helm_report.formattedSummary(m_curr_time);
   list<string>::iterator p;
@@ -1044,7 +1054,7 @@ bool HelmIvP::updateInfoBuffer(CMOOSMsg &msg)
   double msg_time = msg.GetTime();
   if(src_aux == "HELM_VAR_INIT")
     return(false);
-    
+
   if(msg.IsDouble()) {
     return(m_info_buffer->setValue(moosvar, msg.GetDouble(), msg_time));
   }
@@ -1091,6 +1101,7 @@ void HelmIvP::registerVariables()
   
   if(m_bhv_set) {
     vector<string> info_vars = m_bhv_set->getInfoVars();
+
     unsigned int j, jsize = info_vars.size();
     for(j=0; j<jsize; j++)
       registerSingleVariable(info_vars[j]);
@@ -1165,7 +1176,6 @@ void HelmIvP::checkForTakeOver()
 bool HelmIvP::OnStartUp()
 {
   AppCastingMOOSApp::OnStartUp();
-  cout << "In Helm OnStartUp()" << endl;
 
   Notify("PHELMIVP_PID", getpid());
     
@@ -1202,6 +1212,8 @@ bool HelmIvP::OnStartUp()
       handled = setVerbosity(value);
     else if(param == "ACTIVE_START")
       handled = setBooleanOnString(m_has_control, value);
+    else if(param == "SEED_RANDOM")
+      handled = setBooleanOnString(m_seed_random, value);
     else if(param == "GOALS_MANDATORY")
       handled = setBooleanOnString(m_goals_mandatory, value);
     else if(param == "START_ENGAGED")
@@ -1236,6 +1248,9 @@ bool HelmIvP::OnStartUp()
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
+
+  if(m_seed_random)
+    seedRandom();
   
   // Check for Config Warnings first here after reading pHelmIvP block.
   if(getWarningCount("config") > 0) {
@@ -1709,3 +1724,18 @@ bool HelmIvP::helmStatusEnabled() const
   return(false);
 }
 
+
+//--------------------------------------------------------------------
+// Procedure: seedRandom()
+//   Purpose: Create a seed for the random number generated created in
+//            part by the current time and process ID of the helm.
+
+void HelmIvP::seedRandom()
+{
+  unsigned long tseed = time(NULL)+1;
+  unsigned long pid = (long)getpid()+1;
+  unsigned long seed = (tseed%999999);
+  seed = ((rand())*seed)%999999;
+  seed = (seed*pid)%999999;
+  srand(seed);
+}

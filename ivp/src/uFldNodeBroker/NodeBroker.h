@@ -43,18 +43,20 @@ class NodeBroker : public AppCastingMOOSApp
   bool buildReport();
 
  protected:
-  bool handleConfigTryShoreHost(std::string);
+  bool handleConfigTryShoreHost(std::string, bool dup_warn=true);
   bool handleConfigBridge(std::string);
+  bool handleConfigShadow(std::string, std::string&);
 
   void sendNodeBrokerPing();
   void checkMessagingPolicy(std::string);
+  void checkUnhandledShadows();
   
   void handleMailHostInfo(std::string);
   void handleMailDBClients(std::string);
   void handleMailAck(std::string);
 
   void registerVariables();
-  void registerPingBridges();
+  void registerPingBridges(bool only_latest=false);
   void registerUserBridges();
 
   void postPShareCommand(std::string src, std::string dest, std::string route);
@@ -72,6 +74,12 @@ class NodeBroker : public AppCastingMOOSApp
   std::vector<std::string>  m_shore_timewarp;
   std::vector<bool>         m_shore_bridged;
 
+  // Below maps keyed on IP address
+  //std::map<std::string, std::string> m_map_xshore_name;
+  //std::map<std::string, double>      m_map_xshore_start;
+  //std::map<std::string, double>      m_map_xshore_duration;
+  //std::map<std::string, bool>        m_map_xshore_handled;
+
   // A list of IP addresses on the pulled from the try_shore_host param
   std::vector<std::string>  m_try_host_ips;
 
@@ -88,15 +96,9 @@ class NodeBroker : public AppCastingMOOSApp
   unsigned int m_bad_acks_received;
   unsigned int m_host_info_changes;
 
-  std::string m_pshare_cmd_latest;
+  double m_ok_ack_utc;
+  double m_ping_sent_utc;
+  
+  std::string  m_pshare_cmd_latest;  
 };
-
-#endif 
-
-
-
-
-
-
-
-
+#endif

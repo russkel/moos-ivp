@@ -34,6 +34,29 @@
 using namespace std;
 
 //---------------------------------------------------------------
+// Procedure: Constructor()
+//      Note: Convenience Constructor
+
+XYSegList::XYSegList(XYPoint pt1, XYPoint pt2, string label)
+{
+  add_vertex(pt1);
+  add_vertex(pt2);
+  m_transparency = 0.1;
+  m_label = label;
+}
+
+//---------------------------------------------------------------
+// Procedure: Constructor()
+//      Note: Convenience Constructor
+
+XYSegList::XYSegList(double x1, double y1, double x2, double y2)
+{
+  add_vertex(x1, y1);
+  add_vertex(x2, y2);
+  m_transparency = 0.1;
+}
+
+//---------------------------------------------------------------
 // Procedure: add_vertex()
 
 void XYSegList::add_vertex(double x, double y, double z, string vprop)
@@ -397,6 +420,19 @@ bool XYSegList::valid() const
 }
 
 //---------------------------------------------------------------
+// Procedure: get_point()
+
+XYPoint XYSegList::get_point(unsigned int i) const
+{
+  XYPoint nullpt;
+  if(i >= m_vx.size())
+    return(nullpt);
+
+  XYPoint point(m_vx[i], m_vy[i], m_vz[i]);
+  return(point);
+}
+
+//---------------------------------------------------------------
 // Procedure: get_vx()
 
 double XYSegList::get_vx(unsigned int i) const
@@ -499,8 +535,31 @@ XYPoint XYSegList::get_center_pt() const
 
 XYPoint XYSegList::get_centroid_pt() const
 {
-  double cx = get_centroid_x();
-  double cy = get_centroid_y();
+  double signed_area = 0;
+  double first  = 0;
+  double second = 0;
+
+  // For all vertices
+  unsigned int vxsize = m_vx.size();
+  for(unsigned int i=0; i<vxsize; i++) {
+    
+    double x0 = m_vx[i];
+    double y0 = m_vy[i];
+    //Ensure don't increment beyond vector
+    double x1 = m_vx[(i + 1) % vxsize];
+    double y1 = m_vy[(i + 1) % vxsize];
+    double A = (x0 * y1) - (x1 * y0);
+    signed_area += A;
+    first += (x0 + x1) * A;
+    second += (y0 + y1) * A;
+  }
+  
+  signed_area *= 0.5;
+  first = (first) / (6 * signed_area);
+  second = (second) / (6 * signed_area);
+  
+  double cx = first;
+  double cy = second;
   XYPoint pt(cx, cy);
   return(pt);
 }
@@ -751,6 +810,31 @@ double XYSegList::length() const
 
   double total_length = 0;
   for(i=1; i<vsize; i++) {
+    double x = m_vx[i];
+    double y = m_vy[i];
+    total_length += hypot(x-prev_x, y-prev_y);
+    prev_x = x;
+    prev_y = y;
+  }
+  return(total_length);
+}
+
+//---------------------------------------------------------------
+// Procedure: length(start_ix)
+//   Purpose: Determine the overall length between the first and
+//            the last point - distance in the X-Y Plane only
+
+double XYSegList::length(unsigned int start_ix) const
+{
+  unsigned int vsize = m_vx.size();
+  if(start_ix >= vsize)
+    return(0);
+
+  double prev_x = m_vx[start_ix];
+  double prev_y = m_vy[start_ix];
+
+  double total_length = 0;
+  for(unsigned int i=start_ix+1; i<vsize; i++) {
     double x = m_vx[i];
     double y = m_vy[i];
     total_length += hypot(x-prev_x, y-prev_y);
@@ -1059,20 +1143,10 @@ void XYSegList::rotate_pt(double deg, double cx, double cy,
   py = ny;
 }
 
+//---------------------------------------------------------------
+// Procedure: getSeglSpecInactive()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+string getSeglSpecInactive(string label)
+{
+  return("pts={0,0:9,0:0,9},active=false,label=" + label); 
+}
