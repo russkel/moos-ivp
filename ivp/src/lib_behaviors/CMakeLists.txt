@@ -4,9 +4,9 @@
 #--------------------------------------------------------
 
 SET(SRC
+  BehaviorReport.cpp
   IvPBehavior.cpp
   IvPContactBehavior.cpp
-#  IvPTaskBehavior.cpp
   LifeEventHistory.cpp
   LifeEvent.cpp
   ContactState.cpp
@@ -15,13 +15,11 @@ SET(SRC
 
 SET(HEADERS
   BehaviorReport.h
-  BehaviorSet.h
   IvPBehavior.h
   IvPContactBehavior.h
   LifeEventHistory.h
   LifeEvent.h
   ContactStateSet.h
-#  IvPTaskBehavior.h
 )
 
 # Build Library

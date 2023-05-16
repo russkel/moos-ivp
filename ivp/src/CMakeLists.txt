@@ -1,6 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
 
-PROJECT(IVP VERSION 19.8.2)
+PROJECT(IVP VERSION 22.8.0)
 
 #======================================================================
 # Part 1: Set Compiler Flags

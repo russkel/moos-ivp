@@ -13,7 +13,6 @@ SET(SRC
   BFactoryStatic.cpp
   BFactoryDynamic.cpp
   BehaviorSpec.cpp
-  BehaviorReport.cpp
   SpecBuild.cpp
 )
 
@@ -26,7 +25,6 @@ SET(HEADERS
   BFactoryStatic.h
   BFactoryDynamic.h
   BehaviorSpec.h
-  BehaviorReport.h
   SpecBuild.h
 )
 
