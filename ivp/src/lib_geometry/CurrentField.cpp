@@ -148,16 +148,6 @@ void CurrentField::setRadius(double radius)
 }
 
 //-------------------------------------------------------------------
-// Procedure: initGeodesy
-//   Purpose: 
-
-bool CurrentField::initGeodesy(double datum_lat, double datum_lon)
-{
-  bool ok = m_geodesy.Initialise(datum_lat, datum_lon);
-  return(ok);
-}
-
-//-------------------------------------------------------------------
 // Procedure: 
 //   Purpose: 
 

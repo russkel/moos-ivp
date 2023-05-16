@@ -29,7 +29,6 @@
 #include <string>
 #include <vector>
 #include "XYVector.h"
-#include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
 class CurrentField
 {
@@ -41,7 +40,6 @@ public:
   void addVector(const XYVector&, bool marked=false);
   void getLocalForce(double x, double y, double& fx, double& fy) const;
   void setRadius(double radius);
-  bool initGeodesy(double datum_lat, double datum_lon);
   void print();
 
   bool deleteVector(unsigned int ix);
@@ -91,7 +89,6 @@ protected:
   double                m_radius;
   bool                  m_active_vertex;
   unsigned int          m_active_ix;
-  CMOOSGeodesy          m_geodesy;
 
   std::vector<std::string> m_render_hints;
 
