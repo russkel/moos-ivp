@@ -24,11 +24,3 @@ SET(HEADERS
 ) 
 
 ADD_LIBRARY(behaviors-colregs ${SRC})
-
-TARGET_LINK_LIBRARIES(behaviors-colregs
-   mbutil
-   helmivp
-   behaviors
-   geometry
-   )
-
