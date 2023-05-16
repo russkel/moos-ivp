@@ -8,6 +8,7 @@ SET(SRC
   ColorPack.cpp
   FColorMap.cpp
   HintHolder.cpp
+  fileutil.cpp
   FileBuffer.cpp
   MBTimer.cpp
   MBUtils.cpp
@@ -25,6 +26,7 @@ SET(SRC
   Figlog.cpp
   TStamp.cpp
   ReleaseInfo.cpp
+  stringutil.cpp
   MailFlagSet.cpp
   LatLonFormatUtils.cpp
   OpenURL.cpp
@@ -36,6 +38,7 @@ SET(HEADERS
   ColorParse.h
   FColorMap.h
   HintHolder.h
+  fileutil.h
   FileBuffer.h
   MBTimer.h
   MBUtils.h
@@ -52,6 +55,7 @@ SET(HEADERS
   TStamp.h
   ReleaseInfo.h
   ScopeEntry.h
+  stringutil.h
   MailFlagSet.h
   LatLonFormatUtils.h
   OpenURL.h
