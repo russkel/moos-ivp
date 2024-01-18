@@ -1,8 +1,13 @@
 /*****************************************************************/
-/*    NAME: Michael Benjamin                                     */
-/*    ORGN: Dept of Mechanical Engineering, MIT, Cambridge MA    */
-/*    FILE: BHV_AvoidObstacleX.h                                 */
+/*    NAME: Michael Benjamin, Henrik Schmidt, and John Leonard   */
+/*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
+/*    FILE: BHV_AvoidObstacleV24.h                               */
 /*    DATE: Aug 2nd 2006                                         */
+/*    DATE: Sep 9th 2019  Rewrite with different AOF & refinery  */
+/*    DATE: Feb 27th 2021 Further mods related to completion.    */
+/*    DATE: Feb 27th 2021 Created AvoidObstacleV21 version       */
+/*    DATE: Aug 5th 2023 Created AvoidObstacleV24 version        */
+/*    DATE: Aug 5th 2023 Use TurnModel, Oct23 renamed PlatModel  */
 /*                                                               */
 /* This file is part of MOOS-IvP                                 */
 /*                                                               */
@@ -21,46 +26,47 @@
 /* <http://www.gnu.org/licenses/>.                               */
 /*****************************************************************/
  
-#ifndef BHV_AVOID_OBSTACLE_V21_HEADER
-#define BHV_AVOID_OBSTACLE_V21_HEADER
+#ifndef BHV_AVOID_OBSTACLE_V24_HEADER
+#define BHV_AVOID_OBSTACLE_V24_HEADER
 
 #include "IvPBehavior.h"
-#include "ObShipModel.h"
+#include "ObShipModelV24.h"
 #include "XYPolygon.h"
+#include "HintHolder.h"
 
-class BHV_AvoidObstacleV21 : public IvPBehavior {
+class BHV_AvoidObstacleV24 : public IvPBehavior {
 public:
-  BHV_AvoidObstacleV21(IvPDomain);
-  ~BHV_AvoidObstacleV21() {}
+  BHV_AvoidObstacleV24(IvPDomain);
+  ~BHV_AvoidObstacleV24() {}
   
   bool         setParam(std::string, std::string);
   void         onHelmStart();
   IvPFunction* onRunState();
   void         onIdleState();
-  void         onCompleteState();
+  void         onCompleteState() {postErasablePolygons();}
   void         onSetParamComplete();
   void         onIdleToRunState();
-  void         onInactiveState();
+  void         onInactiveState()  {postErasablePolygons();}
   void         onEveryState(std::string);
   void         postConfigStatus();
   double       getDoubleInfo(std::string);
   bool         isConstraint() {return(true);}
   std::string  expandMacros(std::string);
-
+  
  protected: 
-  bool   handleParamVisualHints(std::string);
   bool   handleParamRangeFlag(std::string);
 
   double getRelevance();
   bool   updatePlatformInfo();
   void   postViewablePolygons();
   void   postErasablePolygons();
-
+  void   initVisualHints();
+  
   bool   applyBuffer();
-
+  IvPFunction* buildOF();
   
  protected:
-  ObShipModel m_obship_model;
+  ObShipModelV24 m_obship_model;
 
  protected: // Config Params
   bool        m_use_refinery;
@@ -73,6 +79,8 @@ public:
   std::vector<VarDataPair> m_rng_flags;
   std::vector<VarDataPair> m_cpa_flags;
 
+  bool m_draw_buff_min_poly;
+  bool m_draw_buff_max_poly;
   
  protected: // State variables
 
@@ -86,28 +94,12 @@ public:
   double  m_fpa_rng_sofar;
   double  m_cpa_rng_ever;
   double  m_cpa_reported;
+
+  std::string m_side_lock;
+
   
-  
- protected: // Config Visual hints
-  std::string m_hint_obst_edge_color;
-  std::string m_hint_obst_vertex_color;
-  double      m_hint_obst_vertex_size;
-  std::string m_hint_obst_fill_color;
-  double      m_hint_obst_fill_transparency;
-
-  std::string m_hint_buff_min_edge_color;
-  std::string m_hint_buff_min_vertex_color;
-  double      m_hint_buff_min_vertex_size;
-  std::string m_hint_buff_min_fill_color;
-  double      m_hint_buff_min_fill_transparency;
-
-  std::string m_hint_buff_max_edge_color;
-  std::string m_hint_buff_max_vertex_color;
-  double      m_hint_buff_max_vertex_size;
-  std::string m_hint_buff_max_fill_color;
-  double      m_hint_buff_max_fill_transparency;
-
+protected:
+  HintHolder m_hints;
+ 
 };
-
 #endif
-

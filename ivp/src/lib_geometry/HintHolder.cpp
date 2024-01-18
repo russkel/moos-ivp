@@ -180,3 +180,111 @@ string HintHolder::getSpec() const
   return(spec);
 }
 
+
+//---------------------------------------------------------------
+// Procedure: applyHints()
+//      Note: For each attribute, if a prefix is given, first see
+//            if there is an value associated with the prefix. If
+//            not, check if the attribute has a general value. 
+
+void applyHints(XYPoint& pt, const HintHolder& hints, string prefix)
+{
+  if(prefix != "")
+    prefix += "_";
+
+  if(hints.hasColor(prefix + "label_color"))
+    pt.set_color("label",  hints.getColor(prefix + "label_color"));
+  else if(hints.hasColor("label_color"))
+    pt.set_color("label",  hints.getColor("label_color"));
+  
+  if(hints.hasColor(prefix + "vertex_color"))
+    pt.set_color("vertex", hints.getColor(prefix + "vertex_color"));
+  else if(hints.hasColor("vertex_color"))
+    pt.set_color("vertex", hints.getColor("vertex_color"));
+
+  if(hints.hasMeasure(prefix + "vertex_size"))
+    pt.set_vertex_size(hints.getMeasure(prefix + "vertex_size"));
+  else if(hints.hasMeasure("vertex_size"))
+    pt.set_vertex_size(hints.getMeasure("vertex_size"));
+}
+
+//---------------------------------------------------------------
+// Procedure: applyHints()
+//      Note: For each attribute, if a prefix is given, first see
+//            if there is an value associated with the prefix. If
+//            not, check if the attribute has a general value. 
+
+void applyHints(XYSegList& segl, const HintHolder& hints, string prefix)
+{
+  if(prefix != "")
+    prefix += "_";
+  
+  if(hints.hasColor(prefix + "label_color"))
+    segl.set_color("label",  hints.getColor(prefix + "label_color"));
+  else if(hints.hasColor("label_color"))
+    segl.set_color("label",  hints.getColor("label_color"));
+
+  if(hints.hasColor(prefix + "vertex_color"))
+    segl.set_color("vertex", hints.getColor(prefix+"vertex_color"));
+  else if(hints.hasColor("vertex_color"))
+    segl.set_color("vertex", hints.getColor("vertex_color"));
+
+  if(hints.hasColor(prefix + "edge_color"))
+    segl.set_color("edge", hints.getColor(prefix+"edge_color"));
+  else if(hints.hasColor("edge_color"))
+    segl.set_color("edge", hints.getColor("edge_color"));
+
+  if(hints.hasMeasure(prefix + "edge_size"))
+    segl.set_edge_size(hints.getMeasure(prefix + "edge_size"));
+  else if(hints.hasMeasure("edge_size"))
+    segl.set_edge_size(hints.getMeasure("edge_size"));
+
+  if(hints.hasMeasure(prefix + "vertex_size"))
+    segl.set_vertex_size(hints.getMeasure(prefix + "vertex_size"));
+  else if(hints.hasMeasure("vertex_size"))
+    segl.set_vertex_size(hints.getMeasure("vertex_size"));
+}
+
+  
+//---------------------------------------------------------------
+// Procedure: applyHints()
+//      Note: For each attribute, if a prefix is given, first see
+//            if there is an value associated with the prefix. If
+//            not, check if the attribute has a general value. 
+
+void applyHints(XYPolygon& poly, const HintHolder& hints, string prefix)
+{
+  if(prefix != "")
+    prefix += "_";
+  
+  if(hints.hasColor(prefix + "label_color"))
+    poly.set_color("label",  hints.getColor(prefix + "label_color"));
+  else if(hints.hasColor("label_color"))
+    poly.set_color("label",  hints.getColor("label_color"));
+
+  if(hints.hasColor(prefix + "vertex_color"))
+    poly.set_color("vertex", hints.getColor(prefix+"vertex_color"));
+  else if(hints.hasColor("vertex_color"))
+    poly.set_color("vertex", hints.getColor("vertex_color"));
+
+  if(hints.hasColor(prefix + "edge_color"))
+    poly.set_color("edge", hints.getColor(prefix+"edge_color"));
+  else if(hints.hasColor("edge_color"))
+    poly.set_color("edge", hints.getColor("edge_color"));
+
+  if(hints.hasColor(prefix + "fill_color"))
+    poly.set_color("fill", hints.getColor(prefix+"fill_color"));
+  else if(hints.hasColor("fill_color"))
+    poly.set_color("fill", hints.getColor("fill_color"));
+
+  if(hints.hasMeasure(prefix + "edge_size"))
+    poly.set_edge_size(hints.getMeasure(prefix + "edge_size"));
+  else if(hints.hasMeasure("edge_size"))
+    poly.set_edge_size(hints.getMeasure("edge_size"));
+
+  if(hints.hasMeasure(prefix + "vertex_size"))
+    poly.set_vertex_size(hints.getMeasure(prefix + "vertex_size"));
+  else if(hints.hasMeasure("vertex_size"))
+    poly.set_vertex_size(hints.getMeasure("vertex_size"));
+}
+

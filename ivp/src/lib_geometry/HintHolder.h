@@ -28,6 +28,9 @@
 
 #include <string>
 #include <map>
+#include "XYPoint.h"
+#include "XYSegList.h"
+#include "XYPolygon.h"
 
 class HintHolder {
 public:
@@ -55,6 +58,10 @@ protected: // configuration parameters
   std::map<std::string, std::string> m_map_colors;
   std::map<std::string, double>      m_map_measures;
 };
+
+void applyHints(XYPoint&, const HintHolder&, std::string prefix="");
+void applyHints(XYSegList&, const HintHolder&, std::string prefix="");
+void applyHints(XYPolygon&, const HintHolder&, std::string prefix="");
 
 #endif
 

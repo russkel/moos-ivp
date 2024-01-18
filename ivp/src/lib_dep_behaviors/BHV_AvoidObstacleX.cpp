@@ -37,7 +37,7 @@
 using namespace std;
 
 //-----------------------------------------------------------
-// Procedure: Constructor
+// Procedure: Constructor()
 //      Note: Most of the behavior state is contained in the
 //            member variable m_obship_model
 
@@ -83,7 +83,7 @@ BHV_AvoidObstacleX::BHV_AvoidObstacleX(IvPDomain gdomain) :
 }
 
 //-----------------------------------------------------------
-// Procedure: setParam
+// Procedure: setParam()
 //     Notes: We expect the "waypoint" entries will be of the form
 //            "xposition,yposition".
 //            The "radius" parameter indicates what it means to have
@@ -134,18 +134,10 @@ bool BHV_AvoidObstacleX::setParam(string param, string val)
 }
 
 //-----------------------------------------------------------
-// Procedure: onSetParamComplete
-
-void BHV_AvoidObstacleX::onSetParamComplete()
-{
-  postConfigStatus();
-}
-
-//-----------------------------------------------------------
 // Procedure: isDeprecated()
-//   Purpose: Users of this behavior will get a configuration warning unless
-//            they use the "i_understand" parameter, essentially saying use
-//            at your own risk.
+//   Purpose: Users of this behavior will get a configuration
+//            warning unless they use the "i_understand" param
+//            essentially saying use at your own risk.
 
 string BHV_AvoidObstacleX::isDeprecated()
 {
@@ -153,9 +145,19 @@ string BHV_AvoidObstacleX::isDeprecated()
     return("");
   
   string msg;
-  msg += "AvoidObstacleX not supported. Use AvoidObstacleV21 instead.";
-  msg += "# Set i_understand_this_behavior_is_deprecated=true to suppress this warning";  
+  msg += "BHV_AvoidObstacleX is no longer supported.";
+  msg += "# Use BHV_FixedTurn instead.";
+  msg += "# Set i_understand_this_behavior_is_deprecated=true";
+  msg += "# to suppress this warning and use at your own risk.";  
   return(msg);
+}
+
+//-----------------------------------------------------------
+// Procedure: onSetParamComplete()
+
+void BHV_AvoidObstacleX::onSetParamComplete()
+{
+  postConfigStatus();
 }
 
 //-----------------------------------------------------------

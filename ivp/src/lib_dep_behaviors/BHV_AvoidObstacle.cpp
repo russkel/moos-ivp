@@ -74,6 +74,8 @@ BHV_AvoidObstacle::BHV_AvoidObstacle(IvPDomain gdomain) :
   m_hint_buff_fill_color   = "gray70";
   m_hint_buff_fill_transparency = 0.1;
 
+  m_hide_deprecation_warning = false;
+  
   m_no_alert_request  = false;
   m_resolved_pending  = false;
   
@@ -81,7 +83,7 @@ BHV_AvoidObstacle::BHV_AvoidObstacle(IvPDomain gdomain) :
 }
 
 //-----------------------------------------------------------
-// Procedure: setParam
+// Procedure: setParam()
 //     Notes: We expect the "waypoint" entries will be of the form
 //            "xposition,yposition".
 //            The "radius" parameter indicates what it means to have
@@ -154,6 +156,8 @@ bool BHV_AvoidObstacle::setParam(string param, string val)
     return(setBooleanOnString(m_no_alert_request, val));
   else if(param == "resolved")
     return(setBooleanOnString(m_resolved_pending, val));
+  else if(param == "i_understand_this_behavior_is_deprecated")
+    return(setBooleanOnString(m_hide_deprecation_warning, val));
   else if(param == "visual_hints")
     return(handleVisualHints(val));
   else
@@ -164,7 +168,26 @@ bool BHV_AvoidObstacle::setParam(string param, string val)
 
 
 //-----------------------------------------------------------
-// Procedure: onSetParamComplete
+// Procedure: isDeprecated()
+//   Purpose: Users of this behavior will get a configuration
+//            warning unless they use the "i_understand" param
+//            essentially saying use at your own risk.
+
+string BHV_AvoidObstacle::isDeprecated()
+{
+  if(m_hide_deprecation_warning)
+    return("");
+  
+  string msg;
+  msg += "BHV_AvoidObstacle is no longer supported.";
+  msg += "# Use BHV_FixedTurn instead.";
+    msg += "# Set i_understand_this_behavior_is_deprecated=true";
+  msg += "# to suppress this warning and use at your own risk.";  
+  return(msg);
+}
+
+//-----------------------------------------------------------
+// Procedure: onSetParamComplete()
 //   Example: OBSTACLE_UPDATE_REQUEST = "obstacle_key=abe,
 //                                       update_var=OBSTACLE_UPDATE_ABE"
 

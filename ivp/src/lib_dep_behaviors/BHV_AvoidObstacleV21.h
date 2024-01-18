@@ -1,7 +1,7 @@
 /*****************************************************************/
 /*    NAME: Michael Benjamin                                     */
 /*    ORGN: Dept of Mechanical Engineering, MIT, Cambridge MA    */
-/*    FILE: BHV_AvoidObstacle.h                                  */
+/*    FILE: BHV_AvoidObstacleX.h                                 */
 /*    DATE: Aug 2nd 2006                                         */
 /*                                                               */
 /* This file is part of MOOS-IvP                                 */
@@ -21,16 +21,17 @@
 /* <http://www.gnu.org/licenses/>.                               */
 /*****************************************************************/
  
-#ifndef BHV_AVD_OBSTACLE_HEADER
-#define BHV_AVD_OBSTACLE_HEADER
+#ifndef BHV_AVOID_OBSTACLE_V21_HEADER
+#define BHV_AVOID_OBSTACLE_V21_HEADER
 
 #include "IvPBehavior.h"
+#include "ObShipModel.h"
 #include "XYPolygon.h"
 
-class BHV_AvoidObstacle : public IvPBehavior {
+class BHV_AvoidObstacleV21 : public IvPBehavior {
 public:
-  BHV_AvoidObstacle(IvPDomain);
-  ~BHV_AvoidObstacle() {}
+  BHV_AvoidObstacleV21(IvPDomain);
+  ~BHV_AvoidObstacleV21() {}
   
   bool         setParam(std::string, std::string);
   void         onHelmStart();
@@ -40,68 +41,75 @@ public:
   void         onSetParamComplete();
   void         onIdleToRunState();
   void         onInactiveState();
-  void         onSpawn();
+  void         onEveryState(std::string);
   void         postConfigStatus();
+  double       getDoubleInfo(std::string);
   bool         isConstraint() {return(true);}
+  std::string  expandMacros(std::string);
+  std::string  isDeprecated();
 
- protected:
-  bool   handleVisualHints(std::string);
+ protected: 
+  bool   handleParamVisualHints(std::string);
+  bool   handleParamRangeFlag(std::string);
+
+  double getRelevance();
+  bool   updatePlatformInfo();
   void   postViewablePolygons();
   void   postErasablePolygons();
-  bool   checkForObstacleUpdate();
-  double getRelevance();
+
   bool   applyBuffer();
-  bool   updatePlatformInfo();
+
   
  protected:
-  XYPolygon  m_obstacle_orig;
-  XYPolygon  m_obstacle_buff;
+  ObShipModel m_obship_model;
 
-  double  m_osx;
-  double  m_osy;
-  double  m_osh;
+ protected: // Config Params
+  bool        m_use_refinery;
+  std::string m_pwt_grade;
+
+  std::string m_resolved_obstacle_var;
+  std::string m_obstacle_id;
+
+  std::vector<double>      m_rng_thresh;
+  std::vector<VarDataPair> m_rng_flags;
+  std::vector<VarDataPair> m_cpa_flags;
+
+  bool        m_hide_deprecation_warning;
+    
+ protected: // State variables
 
   double  m_obstacle_relevance;
-
- protected: // Configuration Parameters
-  double  m_allowable_ttc;      // Allowable time to collision
-  double  m_buffer_dist;        // Between OS and obstacle(s)
-
-  double  m_pwt_outer_dist;
-  double  m_pwt_inner_dist;
-  double  m_completed_dist;
-
-  bool    m_pwt_outer_dist_set;
-  bool    m_pwt_inner_dist_set;
-  bool    m_completed_dist_set;
-  
-  bool    m_no_alert_request;
-
   bool    m_resolved_pending;
+
+  bool    m_valid_cn_obs_info;
   
-  std::string  m_pwt_grade;
- 
-  std::string  m_obstacle_key;
+  bool    m_closing;
+  double  m_cpa_rng_sofar;
+  double  m_fpa_rng_sofar;
+  double  m_cpa_rng_ever;
+  double  m_cpa_reported;
+  
+  
+ protected: // Config Visual hints
+  std::string m_hint_obst_edge_color;
+  std::string m_hint_obst_vertex_color;
+  double      m_hint_obst_vertex_size;
+  std::string m_hint_obst_fill_color;
+  double      m_hint_obst_fill_transparency;
 
- protected: // Visual hints
-  std:: string m_hint_obst_edge_color;
-  std:: string m_hint_obst_vertex_color;
-  std:: string m_hint_obst_fill_color;
-  double m_hint_obst_fill_transparency;
+  std::string m_hint_buff_min_edge_color;
+  std::string m_hint_buff_min_vertex_color;
+  double      m_hint_buff_min_vertex_size;
+  std::string m_hint_buff_min_fill_color;
+  double      m_hint_buff_min_fill_transparency;
 
-  std:: string m_hint_buff_edge_color;
-  std:: string m_hint_buff_vertex_color;
-  std:: string m_hint_buff_fill_color;
-  double m_hint_buff_fill_transparency;
+  std::string m_hint_buff_max_edge_color;
+  std::string m_hint_buff_max_vertex_color;
+  double      m_hint_buff_max_vertex_size;
+  std::string m_hint_buff_max_fill_color;
+  double      m_hint_buff_max_fill_transparency;
+
 };
+
 #endif
-
-
-
-
-
-
-
-
-
 
