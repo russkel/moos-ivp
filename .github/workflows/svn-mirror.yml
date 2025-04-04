@@ -15,7 +15,7 @@ jobs:
         sudo apt-get update && sudo apt-get install git git-svn
     - name: Restore svn cache
       id: cache
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ivp-svn
         key: svncache
